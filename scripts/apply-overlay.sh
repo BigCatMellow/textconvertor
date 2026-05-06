@@ -17,6 +17,14 @@ mkdir -p "$onion_root/static/build/.tmp_update/script"
 cp "$repo_root/scripts/onyx_launcher.sh" "$onion_root/static/build/.tmp_update/script/onyx_launcher.sh"
 chmod +x "$onion_root/static/build/.tmp_update/script/onyx_launcher.sh"
 
+mkdir -p "$onion_root/static/build/.tmp_update/res/onyx/icons"
+if compgen -G "$repo_root/icons/*.png.b64" > /dev/null; then
+    for icon in "$repo_root"/icons/*.png.b64; do
+        base="$(basename "$icon" .b64)"
+        base64 -d "$icon" > "$onion_root/static/build/.tmp_update/res/onyx/icons/$base"
+    done
+fi
+
 python3 - "$onion_root" <<'PY'
 from pathlib import Path
 import sys
@@ -37,22 +45,22 @@ if "$(SRC_DIR)/onyxLauncher" not in make_text:
 runtime_text = runtime.read_text()
 old = '''    # MainUI launch
     cd $miyoodir/app
-    PATH="$miyoodir/app:$PATH" \\
-        LD_LIBRARY_PATH="$miyoodir/lib:/config/lib:/lib" \\
-        LD_PRELOAD="$miyoodir/lib/libpadsp.so" \\
+    PATH="$miyoodir/app:$PATH" \
+        LD_LIBRARY_PATH="$miyoodir/lib:/config/lib:/lib" \
+        LD_PRELOAD="$miyoodir/lib/libpadsp.so" \
         ./MainUI 2>&1 > /dev/null
 '''
 new = '''    # MainUI launch
     cd $miyoodir/app
     if [ -f "$sysdir/config/.useOnyxLauncher" ] && [ -x "$sysdir/bin/onyxLauncher" ]; then
-        PATH="$miyoodir/app:$PATH" \\
-            LD_LIBRARY_PATH="$miyoodir/lib:/config/lib:/lib" \\
-            LD_PRELOAD="$miyoodir/lib/libpadsp.so" \\
+        PATH="$miyoodir/app:$PATH" \
+            LD_LIBRARY_PATH="$miyoodir/lib:/config/lib:/lib" \
+            LD_PRELOAD="$miyoodir/lib/libpadsp.so" \
             "$sysdir/bin/onyxLauncher" 2>&1 > /dev/null
     else
-        PATH="$miyoodir/app:$PATH" \\
-            LD_LIBRARY_PATH="$miyoodir/lib:/config/lib:/lib" \\
-            LD_PRELOAD="$miyoodir/lib/libpadsp.so" \\
+        PATH="$miyoodir/app:$PATH" \
+            LD_LIBRARY_PATH="$miyoodir/lib:/config/lib:/lib" \
+            LD_PRELOAD="$miyoodir/lib/libpadsp.so" \
             ./MainUI 2>&1 > /dev/null
     fi
 '''
