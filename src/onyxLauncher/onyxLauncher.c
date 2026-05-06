@@ -12,7 +12,10 @@
 
 #define SCREEN_W 640
 #define SCREEN_H 480
-#define ICON_SIZE 34
+#define ICON_SIZE 48
+#define ITEM_H 70
+#define ITEM_GAP 8
+#define LIST_TOP 81
 #define SYS_DIR "/mnt/SDCARD/.tmp_update"
 #define MIYOO_APP_DIR "/mnt/SDCARD/miyoo/app"
 #define ICON_DIR SYS_DIR "/res/onyx/icons"
@@ -21,15 +24,14 @@ typedef struct {
     const char *icon;
     const char *iconFilled;
     const char *title;
-    const char *hint;
     int state;
 } LauncherItem;
 
 static const LauncherItem ITEMS[] = {
-    {"favorites.png", "favorites-filled.png", "Favorites", "Open your saved picks", 2},
-    {"games.png", "games-filled.png", "Games", "Browse systems and collections", 3},
-    {"apps.png", "apps-filled.png", "Apps", "Tools, players, and utilities", 5},
-    {"settings.png", "settings-filled.png", "Settings", "Open the stock Onion main menu", 0},
+    {"favorites.png", "favorites-filled.png", "Favorites", 2},
+    {"games.png", "games-filled.png", "Games", 3},
+    {"apps.png", "apps-filled.png", "Apps", 5},
+    {"settings.png", "settings-filled.png", "Settings", 0},
 };
 
 static bool quit = false;
@@ -219,7 +221,8 @@ static TTF_Font *openFont(int size)
     return NULL;
 }
 
-static void draw(SDL_Surface *screen, TTF_Font *font, TTF_Font *fontLarge, int selected)
+static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
+                 TTF_Font *fontTitle, int selected)
 {
     SDL_Color bg = rgb(14, 17, 20);
     SDL_Color panel = rgb(25, 29, 34);
@@ -234,26 +237,25 @@ static void draw(SDL_Surface *screen, TTF_Font *font, TTF_Font *fontLarge, int s
     fillRot(screen, 0, 0, SCREEN_W, 58, rgb(17, 21, 25));
     fillRot(screen, 0, 58, SCREEN_W, 2, line);
 
-    text(screen, fontLarge, "onyxOS", 28, 17, textMain);
-    text(screen, font, "83%", 544, 19, textMain);
+    text(screen, fontBrand, "onyxOS", 28, 21, textMain);
+    text(screen, fontFooter, "83%", 544, 19, textMain);
     border(screen, 586, 20, 30, 16, textDim);
 
     for (int i = 0; i < (int)(sizeof(ITEMS) / sizeof(ITEMS[0])); i++) {
-        int y = 99 + i * 70;
+        int y = LIST_TOP + i * (ITEM_H + ITEM_GAP);
         bool active = i == selected;
 
-        fillRot(screen, 44, y, 552, 54, active ? blue : panel);
-        border(screen, 44, y, 552, 54, active ? teal : rgb(31, 36, 42));
-        icon(screen, active ? ITEMS[i].iconFilled : ITEMS[i].icon, 66, y + 10, ICON_SIZE);
-        text(screen, fontLarge, ITEMS[i].title, 122, y + 11, textMain);
-        text(screen, font, ITEMS[i].hint, 122, y + 34, active ? rgb(222, 230, 246) : textDim);
-        text(screen, fontLarge, ">", 562, y + 13, active ? amber : textDim);
+        fillRot(screen, 44, y, 552, ITEM_H, active ? blue : panel);
+        border(screen, 44, y, 552, ITEM_H, active ? teal : rgb(31, 36, 42));
+        icon(screen, active ? ITEMS[i].iconFilled : ITEMS[i].icon, 66, y + 11, ICON_SIZE);
+        text(screen, fontTitle, ITEMS[i].title, 128, y + 22, textMain);
+        text(screen, fontTitle, ">", 562, y + 22, active ? amber : textDim);
     }
 
     fillRot(screen, 0, 414, SCREEN_W, 2, line);
-    text(screen, font, "A SELECT", 42, 438, teal);
-    text(screen, font, "B STOCK MENU", 188, 438, amber);
-    text(screen, font, "UP/DOWN MOVE", 420, 438, textDim);
+    text(screen, fontFooter, "A SELECT", 42, 438, teal);
+    text(screen, fontFooter, "B STOCK MENU", 188, 438, amber);
+    text(screen, fontFooter, "UP/DOWN MOVE", 420, 438, textDim);
 
     SDL_Flip(screen);
 }
@@ -282,21 +284,24 @@ int main(int argc, char *argv[])
     }
 
     SDL_Surface *screen = SDL_SetVideoMode(SCREEN_W, SCREEN_H, 32, SDL_SWSURFACE);
-    TTF_Font *font = openFont(15);
-    TTF_Font *fontLarge = openFont(22);
+    TTF_Font *fontFooter = openFont(15);
+    TTF_Font *fontBrand = openFont(16);
+    TTF_Font *fontTitle = openFont(25);
 
-    if (!screen || !font || !fontLarge) {
-        if (font)
-            TTF_CloseFont(font);
-        if (fontLarge)
-            TTF_CloseFont(fontLarge);
+    if (!screen || !fontFooter || !fontBrand || !fontTitle) {
+        if (fontFooter)
+            TTF_CloseFont(fontFooter);
+        if (fontBrand)
+            TTF_CloseFont(fontBrand);
+        if (fontTitle)
+            TTF_CloseFont(fontTitle);
         TTF_Quit();
         SDL_Quit();
         return 1;
     }
 
     int selected = 0;
-    draw(screen, font, fontLarge, selected);
+    draw(screen, fontFooter, fontBrand, fontTitle, selected);
 
     while (!quit) {
         SDL_Event event;
@@ -312,13 +317,13 @@ int main(int argc, char *argv[])
         SDLKey key = event.key.keysym.sym;
         if (key == SW_BTN_DOWN) {
             selected = (selected + 1) % (int)(sizeof(ITEMS) / sizeof(ITEMS[0]));
-            draw(screen, font, fontLarge, selected);
+            draw(screen, fontFooter, fontBrand, fontTitle, selected);
         }
         else if (key == SW_BTN_UP) {
             selected--;
             if (selected < 0)
                 selected = (int)(sizeof(ITEMS) / sizeof(ITEMS[0])) - 1;
-            draw(screen, font, fontLarge, selected);
+            draw(screen, fontFooter, fontBrand, fontTitle, selected);
         }
         else if (key == SW_BTN_A) {
             handoffToRuntime(ITEMS[selected].state);
@@ -328,8 +333,9 @@ int main(int argc, char *argv[])
         }
     }
 
-    TTF_CloseFont(font);
-    TTF_CloseFont(fontLarge);
+    TTF_CloseFont(fontFooter);
+    TTF_CloseFont(fontBrand);
+    TTF_CloseFont(fontTitle);
     TTF_Quit();
     SDL_Quit();
 
