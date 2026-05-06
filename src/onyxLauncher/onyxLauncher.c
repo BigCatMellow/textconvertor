@@ -171,28 +171,12 @@ static void draw(SDL_Surface *screen, TTF_Font *font, TTF_Font *fontLarge, int s
     SDL_Flip(screen);
 }
 
-static void launchStock(int state)
+static void handoffToRuntime(int state)
 {
     char command[80];
     snprintf(command, sizeof(command), SYS_DIR "/bin/setState %d", state);
     system(command);
-
-    const char *device = getenv("DEVICE_ID");
-    if (!device || strlen(device) == 0)
-        device = "354";
-
-    const char *mode = access(SYS_DIR "/config/.showExpert", F_OK) == 0 ? "expert" : "clean";
-
-    char mainui[128];
-    snprintf(mainui, sizeof(mainui), SYS_DIR "/bin/MainUI-%s-%s", device, mode);
-
-    chdir(MIYOO_APP_DIR);
-    setenv("PATH", MIYOO_APP_DIR ":" SYS_DIR "/bin:/bin:/usr/bin", 1);
-    setenv("LD_LIBRARY_PATH", MIYOO_APP_DIR "/../lib:/config/lib:/lib", 1);
-    setenv("LD_PRELOAD", MIYOO_APP_DIR "/../lib/libpadsp.so", 1);
-
-    execl(mainui, "MainUI", NULL);
-    exit(1);
+    quit = true;
 }
 
 int main(int argc, char *argv[])
@@ -250,10 +234,10 @@ int main(int argc, char *argv[])
             draw(screen, font, fontLarge, selected);
         }
         else if (key == SW_BTN_A) {
-            launchStock(ITEMS[selected].state);
+            handoffToRuntime(ITEMS[selected].state);
         }
         else if (key == SW_BTN_B || key == SW_BTN_MENU) {
-            launchStock(0);
+            handoffToRuntime(0);
         }
     }
 
