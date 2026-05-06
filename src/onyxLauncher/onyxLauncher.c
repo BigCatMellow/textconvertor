@@ -1,4 +1,5 @@
 #include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
 #include <SDL/SDL_ttf.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -11,22 +12,24 @@
 
 #define SCREEN_W 640
 #define SCREEN_H 480
+#define ICON_SIZE 34
 #define SYS_DIR "/mnt/SDCARD/.tmp_update"
 #define MIYOO_APP_DIR "/mnt/SDCARD/miyoo/app"
+#define ICON_DIR SYS_DIR "/res/onyx/icons"
 
 typedef struct {
     const char *icon;
+    const char *iconFilled;
     const char *title;
     const char *hint;
     int state;
 } LauncherItem;
 
 static const LauncherItem ITEMS[] = {
-    {"[+]", "Games", "Browse systems and collections", 3},
-    {"[~]", "Recent", "Resume something you played", 1},
-    {"[*]", "Favorites", "Open your saved picks", 2},
-    {"[#]", "Apps", "Tools, players, and utilities", 5},
-    {"[=]", "Settings", "Open the stock Onion main menu", 0},
+    {"favorites.png", "favorites-filled.png", "Favorites", "Open your saved picks", 2},
+    {"games.png", "games-filled.png", "Games", "Browse systems and collections", 3},
+    {"apps.png", "apps-filled.png", "Apps", "Tools, players, and utilities", 5},
+    {"settings.png", "settings-filled.png", "Settings", "Open the stock Onion main menu", 0},
 };
 
 static bool quit = false;
@@ -72,23 +75,38 @@ static void border(SDL_Surface *screen, int x, int y, int w, int h, SDL_Color co
     fillRot(screen, x + w - 2, y, 2, h, color);
 }
 
-static void text(SDL_Surface *screen, TTF_Font *font, const char *value, int x, int y,
-                 SDL_Color color)
+static Uint32 getPixel(SDL_Surface *surface, int x, int y)
 {
-    SDL_Surface *surface = TTF_RenderUTF8_Blended(font, value, color);
-    if (!surface)
-        return;
+    int bpp = surface->format->BytesPerPixel;
+    Uint8 *p = (Uint8 *)surface->pixels + y * surface->pitch + x * bpp;
 
-    SDL_Surface *rotated = SDL_CreateRGBSurface(SDL_SWSURFACE, surface->w, surface->h,
-                                                surface->format->BitsPerPixel,
-                                                surface->format->Rmask,
-                                                surface->format->Gmask,
-                                                surface->format->Bmask,
-                                                surface->format->Amask);
-    if (!rotated) {
-        SDL_FreeSurface(surface);
-        return;
+    switch (bpp) {
+    case 1:
+        return *p;
+    case 2:
+        return *(Uint16 *)p;
+    case 3:
+        if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
+            return p[0] << 16 | p[1] << 8 | p[2];
+        return p[0] | p[1] << 8 | p[2] << 16;
+    default:
+        return *(Uint32 *)p;
     }
+}
+
+static void putPixel(SDL_Surface *surface, int x, int y, Uint32 pixel)
+{
+    Uint8 *p = (Uint8 *)surface->pixels + y * surface->pitch + x * 4;
+    *(Uint32 *)p = pixel;
+}
+
+static SDL_Surface *rotate180(SDL_Surface *surface)
+{
+    SDL_Surface *rotated = SDL_CreateRGBSurface(SDL_SWSURFACE, surface->w, surface->h,
+                                                32, 0x00ff0000, 0x0000ff00,
+                                                0x000000ff, 0xff000000);
+    if (!rotated)
+        return NULL;
 
     Uint32 transparent = SDL_MapRGBA(rotated->format, 0, 0, 0, 0);
     SDL_FillRect(rotated, NULL, transparent);
@@ -98,20 +116,89 @@ static void text(SDL_Surface *screen, TTF_Font *font, const char *value, int x, 
     SDL_LockSurface(rotated);
     for (int py = 0; py < surface->h; py++) {
         for (int px = 0; px < surface->w; px++) {
-            Uint32 *src = (Uint32 *)((Uint8 *)surface->pixels + py * surface->pitch + px * 4);
-            Uint32 *dst = (Uint32 *)((Uint8 *)rotated->pixels +
-                                     (surface->h - 1 - py) * rotated->pitch +
-                                     (surface->w - 1 - px) * 4);
-            *dst = *src;
+            Uint8 r, g, b, a;
+            SDL_GetRGBA(getPixel(surface, px, py), surface->format, &r, &g, &b, &a);
+            putPixel(rotated, surface->w - 1 - px, surface->h - 1 - py,
+                     SDL_MapRGBA(rotated->format, r, g, b, a));
         }
     }
     SDL_UnlockSurface(rotated);
     SDL_UnlockSurface(surface);
 
+    return rotated;
+}
+
+static void blitRot(SDL_Surface *screen, SDL_Surface *surface, int x, int y)
+{
+    if (!surface)
+        return;
+
+    SDL_Surface *rotated = rotate180(surface);
+    if (!rotated)
+        return;
+
     SDL_Rect rect = {rx(x, surface->w), ry(y, surface->h), 0, 0};
     SDL_BlitSurface(rotated, NULL, screen, &rect);
     SDL_FreeSurface(rotated);
+}
+
+static void text(SDL_Surface *screen, TTF_Font *font, const char *value, int x, int y,
+                 SDL_Color color)
+{
+    SDL_Surface *surface = TTF_RenderUTF8_Blended(font, value, color);
+    if (!surface)
+        return;
+
+    blitRot(screen, surface, x, y);
     SDL_FreeSurface(surface);
+}
+
+static SDL_Surface *scaleIcon(SDL_Surface *src, int size)
+{
+    SDL_Surface *scaled = SDL_CreateRGBSurface(SDL_SWSURFACE, size, size, 32,
+                                               0x00ff0000, 0x0000ff00,
+                                               0x000000ff, 0xff000000);
+    if (!scaled)
+        return NULL;
+
+    Uint32 transparent = SDL_MapRGBA(scaled->format, 0, 0, 0, 0);
+    SDL_FillRect(scaled, NULL, transparent);
+    SDL_SetColorKey(scaled, SDL_SRCCOLORKEY, transparent);
+
+    SDL_LockSurface(src);
+    SDL_LockSurface(scaled);
+    for (int y = 0; y < size; y++) {
+        for (int x = 0; x < size; x++) {
+            int sx = x * src->w / size;
+            int sy = y * src->h / size;
+            Uint8 r, g, b, a;
+            SDL_GetRGBA(getPixel(src, sx, sy), src->format, &r, &g, &b, &a);
+            putPixel(scaled, x, y, SDL_MapRGBA(scaled->format, r, g, b, a));
+        }
+    }
+    SDL_UnlockSurface(scaled);
+    SDL_UnlockSurface(src);
+
+    return scaled;
+}
+
+static void icon(SDL_Surface *screen, const char *file, int x, int y, int size)
+{
+    char path[256];
+    snprintf(path, sizeof(path), ICON_DIR "/%s", file);
+
+    SDL_Surface *loaded = IMG_Load(path);
+    if (!loaded)
+        return;
+
+    SDL_Surface *scaled = scaleIcon(loaded, size);
+    SDL_FreeSurface(loaded);
+
+    if (!scaled)
+        return;
+
+    blitRot(screen, scaled, x, y);
+    SDL_FreeSurface(scaled);
 }
 
 static TTF_Font *openFont(int size)
@@ -147,26 +234,26 @@ static void draw(SDL_Surface *screen, TTF_Font *font, TTF_Font *fontLarge, int s
     fillRot(screen, 0, 0, SCREEN_W, 58, rgb(17, 21, 25));
     fillRot(screen, 0, 58, SCREEN_W, 2, line);
 
-    text(screen, fontLarge, "onyxOS", 28, 14, textMain);
+    text(screen, fontLarge, "onyxOS", 28, 17, textMain);
     text(screen, font, "83%", 544, 19, textMain);
     border(screen, 586, 20, 30, 16, textDim);
 
     for (int i = 0; i < (int)(sizeof(ITEMS) / sizeof(ITEMS[0])); i++) {
-        int y = 88 + i * 68;
+        int y = 99 + i * 70;
         bool active = i == selected;
 
         fillRot(screen, 44, y, 552, 54, active ? blue : panel);
         border(screen, 44, y, 552, 54, active ? teal : rgb(31, 36, 42));
-        text(screen, fontLarge, ITEMS[i].icon, 68, y + 11, active ? textMain : textDim);
-        text(screen, fontLarge, ITEMS[i].title, 136, y + 9, textMain);
-        text(screen, font, ITEMS[i].hint, 136, y + 33, active ? rgb(222, 230, 246) : textDim);
-        text(screen, fontLarge, ">", 562, y + 10, active ? amber : textDim);
+        icon(screen, active ? ITEMS[i].iconFilled : ITEMS[i].icon, 66, y + 10, ICON_SIZE);
+        text(screen, fontLarge, ITEMS[i].title, 122, y + 11, textMain);
+        text(screen, font, ITEMS[i].hint, 122, y + 34, active ? rgb(222, 230, 246) : textDim);
+        text(screen, fontLarge, ">", 562, y + 13, active ? amber : textDim);
     }
 
     fillRot(screen, 0, 414, SCREEN_W, 2, line);
-    text(screen, font, "A SELECT", 42, 436, teal);
-    text(screen, font, "B STOCK MENU", 188, 436, amber);
-    text(screen, font, "UP/DOWN MOVE", 420, 436, textDim);
+    text(screen, font, "A SELECT", 42, 438, teal);
+    text(screen, font, "B STOCK MENU", 188, 438, amber);
+    text(screen, font, "UP/DOWN MOVE", 420, 438, textDim);
 
     SDL_Flip(screen);
 }
@@ -195,8 +282,8 @@ int main(int argc, char *argv[])
     }
 
     SDL_Surface *screen = SDL_SetVideoMode(SCREEN_W, SCREEN_H, 32, SDL_SWSURFACE);
-    TTF_Font *font = openFont(18);
-    TTF_Font *fontLarge = openFont(28);
+    TTF_Font *font = openFont(15);
+    TTF_Font *fontLarge = openFont(22);
 
     if (!screen || !font || !fontLarge) {
         if (font)
