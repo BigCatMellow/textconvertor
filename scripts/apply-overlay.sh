@@ -45,22 +45,22 @@ if "$(SRC_DIR)/onyxLauncher" not in make_text:
 runtime_text = runtime.read_text()
 old = '''    # MainUI launch
     cd $miyoodir/app
-    PATH="$miyoodir/app:$PATH" \
-        LD_LIBRARY_PATH="$miyoodir/lib:/config/lib:/lib" \
-        LD_PRELOAD="$miyoodir/lib/libpadsp.so" \
+    PATH="$miyoodir/app:$PATH" \\
+        LD_LIBRARY_PATH="$miyoodir/lib:/config/lib:/lib" \\
+        LD_PRELOAD="$miyoodir/lib/libpadsp.so" \\
         ./MainUI 2>&1 > /dev/null
 '''
 new = '''    # MainUI launch
     cd $miyoodir/app
     if [ -f "$sysdir/config/.useOnyxLauncher" ] && [ -x "$sysdir/bin/onyxLauncher" ]; then
-        PATH="$miyoodir/app:$PATH" \
-            LD_LIBRARY_PATH="$miyoodir/lib:/config/lib:/lib" \
-            LD_PRELOAD="$miyoodir/lib/libpadsp.so" \
+        PATH="$miyoodir/app:$PATH" \\
+            LD_LIBRARY_PATH="$miyoodir/lib:/config/lib:/lib" \\
+            LD_PRELOAD="$miyoodir/lib/libpadsp.so" \\
             "$sysdir/bin/onyxLauncher" 2>&1 > /dev/null
     else
-        PATH="$miyoodir/app:$PATH" \
-            LD_LIBRARY_PATH="$miyoodir/lib:/config/lib:/lib" \
-            LD_PRELOAD="$miyoodir/lib/libpadsp.so" \
+        PATH="$miyoodir/app:$PATH" \\
+            LD_LIBRARY_PATH="$miyoodir/lib:/config/lib:/lib" \\
+            LD_PRELOAD="$miyoodir/lib/libpadsp.so" \\
             ./MainUI 2>&1 > /dev/null
     fi
 '''
