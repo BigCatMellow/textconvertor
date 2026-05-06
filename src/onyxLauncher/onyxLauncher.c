@@ -49,12 +49,27 @@ static void fill(SDL_Surface *screen, int x, int y, int w, int h, SDL_Color colo
     SDL_FillRect(screen, &rect, SDL_MapRGB(screen->format, color.r, color.g, color.b));
 }
 
+static int rx(int x, int w)
+{
+    return SCREEN_W - x - w;
+}
+
+static int ry(int y, int h)
+{
+    return SCREEN_H - y - h;
+}
+
+static void fillRot(SDL_Surface *screen, int x, int y, int w, int h, SDL_Color color)
+{
+    fill(screen, rx(x, w), ry(y, h), w, h, color);
+}
+
 static void border(SDL_Surface *screen, int x, int y, int w, int h, SDL_Color color)
 {
-    fill(screen, x, y, w, 2, color);
-    fill(screen, x, y + h - 2, w, 2, color);
-    fill(screen, x, y, 2, h, color);
-    fill(screen, x + w - 2, y, 2, h, color);
+    fillRot(screen, x, y, w, 2, color);
+    fillRot(screen, x, y + h - 2, w, 2, color);
+    fillRot(screen, x, y, 2, h, color);
+    fillRot(screen, x + w - 2, y, 2, h, color);
 }
 
 static void text(SDL_Surface *screen, TTF_Font *font, const char *value, int x, int y,
@@ -64,8 +79,38 @@ static void text(SDL_Surface *screen, TTF_Font *font, const char *value, int x, 
     if (!surface)
         return;
 
-    SDL_Rect rect = {x, y, 0, 0};
-    SDL_BlitSurface(surface, NULL, screen, &rect);
+    SDL_Surface *rotated = SDL_CreateRGBSurface(SDL_SWSURFACE, surface->w, surface->h,
+                                                surface->format->BitsPerPixel,
+                                                surface->format->Rmask,
+                                                surface->format->Gmask,
+                                                surface->format->Bmask,
+                                                surface->format->Amask);
+    if (!rotated) {
+        SDL_FreeSurface(surface);
+        return;
+    }
+
+    Uint32 transparent = SDL_MapRGBA(rotated->format, 0, 0, 0, 0);
+    SDL_FillRect(rotated, NULL, transparent);
+    SDL_SetColorKey(rotated, SDL_SRCCOLORKEY, transparent);
+
+    SDL_LockSurface(surface);
+    SDL_LockSurface(rotated);
+    for (int py = 0; py < surface->h; py++) {
+        for (int px = 0; px < surface->w; px++) {
+            Uint32 *src = (Uint32 *)((Uint8 *)surface->pixels + py * surface->pitch + px * 4);
+            Uint32 *dst = (Uint32 *)((Uint8 *)rotated->pixels +
+                                     (surface->h - 1 - py) * rotated->pitch +
+                                     (surface->w - 1 - px) * 4);
+            *dst = *src;
+        }
+    }
+    SDL_UnlockSurface(rotated);
+    SDL_UnlockSurface(surface);
+
+    SDL_Rect rect = {rx(x, surface->w), ry(y, surface->h), 0, 0};
+    SDL_BlitSurface(rotated, NULL, screen, &rect);
+    SDL_FreeSurface(rotated);
     SDL_FreeSurface(surface);
 }
 
@@ -99,8 +144,8 @@ static void draw(SDL_Surface *screen, TTF_Font *font, TTF_Font *fontLarge, int s
     SDL_Color amber = rgb(224, 178, 74);
 
     fill(screen, 0, 0, SCREEN_W, SCREEN_H, bg);
-    fill(screen, 0, 0, SCREEN_W, 58, rgb(17, 21, 25));
-    fill(screen, 0, 58, SCREEN_W, 2, line);
+    fillRot(screen, 0, 0, SCREEN_W, 58, rgb(17, 21, 25));
+    fillRot(screen, 0, 58, SCREEN_W, 2, line);
 
     text(screen, fontLarge, "onyxOS", 28, 14, textMain);
     text(screen, font, "83%", 544, 19, textMain);
@@ -110,7 +155,7 @@ static void draw(SDL_Surface *screen, TTF_Font *font, TTF_Font *fontLarge, int s
         int y = 88 + i * 68;
         bool active = i == selected;
 
-        fill(screen, 44, y, 552, 54, active ? blue : panel);
+        fillRot(screen, 44, y, 552, 54, active ? blue : panel);
         border(screen, 44, y, 552, 54, active ? teal : rgb(31, 36, 42));
         text(screen, fontLarge, ITEMS[i].icon, 68, y + 11, active ? textMain : textDim);
         text(screen, fontLarge, ITEMS[i].title, 136, y + 9, textMain);
@@ -118,7 +163,7 @@ static void draw(SDL_Surface *screen, TTF_Font *font, TTF_Font *fontLarge, int s
         text(screen, fontLarge, ">", 562, y + 10, active ? amber : textDim);
     }
 
-    fill(screen, 0, 414, SCREEN_W, 2, line);
+    fillRot(screen, 0, 414, SCREEN_W, 2, line);
     text(screen, font, "A SELECT", 42, 436, teal);
     text(screen, font, "B STOCK MENU", 188, 436, amber);
     text(screen, font, "UP/DOWN MOVE", 420, 436, textDim);
