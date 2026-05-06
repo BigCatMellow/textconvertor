@@ -7,7 +7,9 @@ on:
       - "src/onyxLauncher/**"
       - "scripts/**"
       - "icons/**"
+      - "fonts/**"
       - "splash/**"
+      - "onyx-launcher-type-lab.html"
       - ".github/workflows/build-onyx-launcher.yml"
 
 jobs:
@@ -24,7 +26,7 @@ jobs:
       - name: Apply Onyx overlay
         run: |
           bash scripts/apply-overlay.sh Onion
-          mkdir -p Onion/out package/bin package/script package/source
+          mkdir -p Onion/out package/bin package/script package/source package/miyoo/app package/preview
 
       - name: Pull Miyoo toolchain
         run: docker pull aemiii91/miyoomini-toolchain:latest
@@ -42,15 +44,30 @@ jobs:
           cp scripts/onyx_launcher.sh package/script/onyx_launcher.sh
           mkdir -p package/res/onyx/icons
           cp Onion/static/build/.tmp_update/res/onyx/icons/*.png package/res/onyx/icons/
+          cp Onion/static/build/miyoo/app/SairaSemiCondensed-Medium.ttf package/miyoo/app/SairaSemiCondensed-Medium.ttf
           cp Onion/static/build/.tmp_update/res/bootScreen.png package/res/bootScreen.png
           cp src/onyxLauncher/onyxLauncher.c package/source/onyxLauncher.c
           cp src/onyxLauncher/Makefile package/source/Makefile
+          cp onyx-launcher-type-lab.html package/preview/onyx-launcher-type-lab.html
+          mkdir -p package/preview/icons package/preview/fonts
+          for icon in icons/*.png.b64; do
+            base="$(basename "$icon" .b64)"
+            base64 -d "$icon" > "package/preview/icons/$base"
+          done
+          for font in fonts/*.ttf.b64; do
+            base="$(basename "$font" .b64)"
+            base64 -d "$font" > "package/preview/fonts/$base"
+          done
           chmod +x package/bin/onyxLauncher package/script/onyx_launcher.sh
           cat > package/INSTALL.txt <<'TXT'
           Copy bin/onyxLauncher to /mnt/SDCARD/.tmp_update/bin/onyxLauncher
           Copy script/onyx_launcher.sh to /mnt/SDCARD/.tmp_update/script/onyx_launcher.sh
           Copy res/onyx/icons to /mnt/SDCARD/.tmp_update/res/onyx/icons
           Copy res/bootScreen.png to /mnt/SDCARD/.tmp_update/res/bootScreen.png
+          Copy miyoo/app/SairaSemiCondensed-Medium.ttf to /mnt/SDCARD/miyoo/app/SairaSemiCondensed-Medium.ttf
+
+          Optional preview:
+            Open preview/onyx-launcher-type-lab.html on your PC to inspect the current layout.
 
           Enable:
             /mnt/SDCARD/.tmp_update/script/onyx_launcher.sh

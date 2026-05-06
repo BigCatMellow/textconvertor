@@ -17,6 +17,11 @@ Copy the artifact contents onto the SD card so the files land at:
 
 - `/mnt/SDCARD/.tmp_update/bin/onyxLauncher`
 - `/mnt/SDCARD/.tmp_update/script/onyx_launcher.sh`
+- `/mnt/SDCARD/.tmp_update/res/onyx/icons/*`
+- `/mnt/SDCARD/.tmp_update/res/bootScreen.png`
+- `/mnt/SDCARD/miyoo/app/SairaSemiCondensed-Medium.ttf`
+
+The artifact also includes `preview/onyx-launcher-type-lab.html` with local `Icons` and `Fonts` folders so the current UI can be previewed offline.
 
 Enable it on the device with:
 

@@ -12,9 +12,13 @@
 
 #define SCREEN_W 640
 #define SCREEN_H 480
-#define ICON_SIZE 48
+#define ICON_SIZE 38
+#define PANEL_X 34
+#define PANEL_Y 24
+#define PANEL_W 572
+#define PANEL_H 392
 #define ITEM_H 70
-#define ITEM_GAP 8
+#define ITEM_GAP 0
 #define LIST_TOP 81
 #define SYS_DIR "/mnt/SDCARD/.tmp_update"
 #define MIYOO_APP_DIR "/mnt/SDCARD/miyoo/app"
@@ -28,10 +32,10 @@ typedef struct {
 } LauncherItem;
 
 static const LauncherItem ITEMS[] = {
-    {"favorites.png", "favorites-filled.png", "Favorites", 2},
-    {"games.png", "games-filled.png", "Games", 3},
-    {"apps.png", "apps-filled.png", "Apps", 5},
-    {"settings.png", "settings-filled.png", "Settings", 0},
+    {"favorites-white.png", "favorites-white.png", "Favorites", 2},
+    {"games-white.png", "games-white.png", "Games", 3},
+    {"apps-white.png", "apps-white.png", "Apps", 5},
+    {"settings-white.png", "settings-white.png", "Settings", 0},
 };
 
 static bool quit = false;
@@ -203,9 +207,23 @@ static void icon(SDL_Surface *screen, const char *file, int x, int y, int size)
     SDL_FreeSurface(scaled);
 }
 
+static void image(SDL_Surface *screen, const char *file, int x, int y)
+{
+    char path[256];
+    snprintf(path, sizeof(path), ICON_DIR "/%s", file);
+
+    SDL_Surface *loaded = IMG_Load(path);
+    if (!loaded)
+        return;
+
+    blitRot(screen, loaded, x, y);
+    SDL_FreeSurface(loaded);
+}
+
 static TTF_Font *openFont(int size)
 {
     const char *paths[] = {
+        MIYOO_APP_DIR "/SairaSemiCondensed-Medium.ttf",
         MIYOO_APP_DIR "/Exo-2-Bold-Italic.ttf",
         MIYOO_APP_DIR "/Helvetica-Neue-2.ttf",
         SYS_DIR "/res/Arkhip_font.ttf",
@@ -225,37 +243,41 @@ static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
                  TTF_Font *fontTitle, int selected)
 {
     SDL_Color bg = rgb(14, 17, 20);
-    SDL_Color panel = bg;
-    SDL_Color line = rgb(64, 73, 82);
-    SDL_Color textMain = rgb(232, 235, 240);
+    SDL_Color panel = rgb(22, 28, 33);
+    SDL_Color panelDark = rgb(17, 20, 24);
+    SDL_Color line = rgb(38, 43, 49);
+    SDL_Color textMain = rgb(238, 242, 246);
     SDL_Color textDim = rgb(154, 160, 170);
-    SDL_Color teal = rgb(70, 190, 178);
-    SDL_Color blue = rgb(77, 124, 254);
-    SDL_Color amber = rgb(224, 178, 74);
+    SDL_Color teal = rgb(28, 101, 219);
+    SDL_Color blue = rgb(28, 101, 219);
+    SDL_Color amber = rgb(221, 118, 0);
 
     fill(screen, 0, 0, SCREEN_W, SCREEN_H, bg);
-    fillRot(screen, 0, 0, SCREEN_W, 58, rgb(17, 21, 25));
-    fillRot(screen, 0, 58, SCREEN_W, 2, line);
+    fillRot(screen, PANEL_X, PANEL_Y, PANEL_W, PANEL_H, panelDark);
+    border(screen, PANEL_X, PANEL_Y, PANEL_W, PANEL_H, line);
 
-    text(screen, fontBrand, "onyxOS", 28, 21, textMain);
-    text(screen, fontFooter, "83%", 544, 19, textMain);
-    border(screen, 586, 20, 30, 16, textDim);
+    image(screen, "onyx-logo-header.png", 56, 40);
+    text(screen, fontFooter, "10:30", 312, 40, textMain);
+    text(screen, fontFooter, "83%", 520, 40, textMain);
+    border(screen, 574, 42, 22, 12, textDim);
 
     for (int i = 0; i < (int)(sizeof(ITEMS) / sizeof(ITEMS[0])); i++) {
         int y = LIST_TOP + i * (ITEM_H + ITEM_GAP);
         bool active = i == selected;
 
-        fillRot(screen, 44, y, 552, ITEM_H, active ? blue : panel);
-        border(screen, 44, y, 552, ITEM_H, active ? teal : rgb(31, 36, 42));
-        icon(screen, active ? ITEMS[i].iconFilled : ITEMS[i].icon, 66, y + 11, ICON_SIZE);
-        text(screen, fontTitle, ITEMS[i].title, 128, y + 22, textMain);
-        text(screen, fontTitle, ">", 562, y + 22, active ? amber : textDim);
+        fillRot(screen, 52, y, 536, ITEM_H, active ? blue : panel);
+        border(screen, 52, y, 536, ITEM_H, active ? teal : bg);
+        icon(screen, active ? ITEMS[i].iconFilled : ITEMS[i].icon, 76, y + 16, ICON_SIZE);
+        text(screen, fontTitle, ITEMS[i].title, 134, y + 17, textMain);
+        icon(screen, active ? "square-rounded-arrow-right-filled.png" : "square-rounded-arrow-right.png",
+             526, y + 16, ICON_SIZE);
     }
 
-    fillRot(screen, 0, 414, SCREEN_W, 2, line);
-    text(screen, fontFooter, "A SELECT", 42, 438, teal);
-    text(screen, fontFooter, "B STOCK MENU", 188, 438, amber);
-    text(screen, fontFooter, "UP/DOWN MOVE", 420, 438, textDim);
+    fillRot(screen, 320, 374, 2, 26, line);
+    icon(screen, "button-a.png", 66, 375, 30);
+    text(screen, fontFooter, "Select", 102, 379, textDim);
+    icon(screen, "button-b.png", 480, 375, 30);
+    text(screen, fontFooter, "Back", 516, 379, textDim);
 
     SDL_Flip(screen);
 }
@@ -284,9 +306,9 @@ int main(int argc, char *argv[])
     }
 
     SDL_Surface *screen = SDL_SetVideoMode(SCREEN_W, SCREEN_H, 32, SDL_SWSURFACE);
-    TTF_Font *fontFooter = openFont(15);
-    TTF_Font *fontBrand = openFont(16);
-    TTF_Font *fontTitle = openFont(25);
+    TTF_Font *fontFooter = openFont(20);
+    TTF_Font *fontBrand = openFont(17);
+    TTF_Font *fontTitle = openFont(30);
 
     if (!screen || !fontFooter || !fontBrand || !fontTitle) {
         if (fontFooter)

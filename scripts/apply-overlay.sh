@@ -25,6 +25,14 @@ if compgen -G "$repo_root/icons/*.png.b64" > /dev/null; then
     done
 fi
 
+mkdir -p "$onion_root/static/build/miyoo/app"
+if compgen -G "$repo_root/fonts/*.b64" > /dev/null; then
+    for font in "$repo_root"/fonts/*.b64; do
+        base="$(basename "$font" .b64)"
+        base64 -d "$font" > "$onion_root/static/build/miyoo/app/$base"
+    done
+fi
+
 if [[ -f "$repo_root/splash/bootScreen.png.b64" ]]; then
     base64 -d "$repo_root/splash/bootScreen.png.b64" > "$onion_root/static/build/.tmp_update/res/bootScreen.png"
     mkdir -p "$onion_root/src/bootScreen/res"

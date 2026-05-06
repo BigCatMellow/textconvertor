@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Onyx Launcher Type Lab</title>
+  <style>
+    @font-face {
+      font-family: "Onion Helvetica";
+      src: url("Onion-4.3.1-1/static/build/miyoo/app/Helvetica-Neue-2.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "Onion Exo";
+      src: url("Onion-4.3.1-1/static/build/miyoo/app/Exo-2-Bold-Italic.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "Onion BPreplay";
+      src: url("Onion-4.3.1-1/static/build/miyoo/app/BPreplayBold.otf") format("opentype");
+    }
+
+    @font-face {
+      font-family: "Saira Semi Condensed";
+      src: url("fonts/SairaSemiCondensed-Regular.ttf") format("truetype");
+      font-weight: 400;
+    }
+
+    @font-face {
+      font-family: "Saira Semi Condensed";
+      src: url("fonts/SairaSemiCondensed-Medium.ttf") format("truetype");
+      font-weight: 600;
+    }
+
+    @font-face {
+      font-family: "Barlow Semi Condensed";
+      src: url("fonts/BarlowSemiCondensed-Regular.ttf") format("truetype");
+      font-weight: 400;
+    }
+
+    @font-face {
+      font-family: "Barlow Semi Condensed";
+      src: url("fonts/BarlowSemiCondensed-Medium.ttf") format("truetype");
+      font-weight: 600;
+    }
+
+    @font-face {
+      font-family: "Rajdhani";
+      src: url("fonts/Rajdhani-Regular.ttf") format("truetype");
+      font-weight: 400;
+    }
+
+    @font-face {
+      font-family: "Rajdhani";
+      src: url("fonts/Rajdhani-Medium.ttf") format("truetype");
+      font-weight: 600;
+    }
+
+    @font-face {
+      font-family: "Oxanium";
+      src: url("fonts/Oxanium.ttf") format("truetype");
+      font-weight: 400 700;
+    }
+
+    :root {
+      --page: #101317;
+      --screen-bg: #0e1114;
+      --status-bg: #111418;
+      --ink: #eef2f6;
+      --muted: #9ca3ad;
+      --line: #262b31;
+      --row-bg: #191d22;
+      --row-border: #1f242a;
+      --teal: #1c65db;
+      --blue: #1c65db;
+      --amber: #dd7600;
+      --ui-font: "Saira Semi Condensed", "Bahnschrift", system-ui, sans-serif;
+      --brand-size: 17px;
+      --title-size: 30px;
+      --footer-size: 20px;
+      --item-height: 70px;
+      --item-gap: 0px;
+      --icon-size: 38px;
+      --list-top: 81px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 16% 10%, rgba(70, 190, 178, 0.12), transparent 28rem),
+        linear-gradient(135deg, #111418, #1a1d22 42%, #101317);
+      font-family: Inter, system-ui, sans-serif;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: minmax(360px, 640px) minmax(300px, 1fr);
+      gap: 28px;
+      width: min(1180px, calc(100vw - 40px));
+      margin: 28px auto;
+      align-items: start;
+    }
+
+    .previewWrap {
+      display: grid;
+      gap: 14px;
+    }
+
+    .previewTitle {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      color: #cfd6df;
+      font-size: 13px;
+      letter-spacing: 0;
+    }
+
+    .screen {
+      width: min(640px, 100%);
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+      background: var(--screen-bg);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 22px 70px rgba(0, 0, 0, 0.36);
+      font-family: var(--ui-font);
+      position: relative;
+    }
+
+    .status {
+      position: absolute;
+      left: 34px;
+      right: 34px;
+      top: 24px;
+      height: 392px;
+      background: var(--status-bg);
+      border: 1px solid var(--line);
+    }
+
+    .brand {
+      position: absolute;
+      left: 20px;
+      top: 17px;
+      font-size: var(--brand-size);
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .brand img {
+      display: block;
+      width: 64px;
+      height: 21px;
+      object-fit: contain;
+    }
+
+    .battery {
+      position: absolute;
+      right: 12px;
+      top: 15px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #dde2e8;
+      font-size: var(--footer-size);
+      font-weight: 600;
+    }
+
+    .clock {
+      position: absolute;
+      left: 50%;
+      top: 15px;
+      transform: translateX(-50%);
+      color: var(--ink);
+      font-size: var(--footer-size);
+      font-weight: 600;
+    }
+
+    .batteryIcon {
+      width: 32px;
+      height: 17px;
+      border: 2px solid #aeb5bf;
+      position: relative;
+    }
+
+    .batteryIcon::before {
+      content: "";
+      position: absolute;
+      inset: 3px 5px 3px 3px;
+      background: #9ed8df;
+    }
+
+    .batteryIcon::after {
+      content: "";
+      position: absolute;
+      right: -5px;
+      top: 4px;
+      width: 3px;
+      height: 7px;
+      background: #aeb5bf;
+    }
+
+    .list {
+      position: absolute;
+      left: 52px;
+      right: 52px;
+      top: var(--list-top);
+      display: grid;
+      gap: var(--item-gap);
+    }
+
+    .item {
+      height: var(--item-height);
+      display: grid;
+      grid-template-columns: calc(var(--icon-size) + 24px) 1fr var(--icon-size);
+      align-items: center;
+      background: var(--row-bg);
+      border: 2px solid var(--row-border);
+      color: var(--ink);
+      padding: 0 24px;
+      text-align: left;
+    }
+
+    .item.active {
+      background: var(--blue);
+      border-color: var(--teal);
+    }
+
+    .item img {
+      width: var(--icon-size);
+      height: var(--icon-size);
+      object-fit: contain;
+      image-rendering: auto;
+    }
+
+    .copy {
+      min-width: 0;
+    }
+
+    .title {
+      font-size: var(--title-size);
+      font-weight: 600;
+      line-height: 1.18;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      letter-spacing: 0;
+    }
+
+    .chev {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    .chev img {
+      width: var(--icon-size);
+      height: var(--icon-size);
+      display: block;
+    }
+
+    .footer {
+      position: absolute;
+      left: 34px;
+      right: 34px;
+      bottom: 64px;
+      height: 42px;
+      display: grid;
+      grid-template-columns: 1fr 2px 1fr;
+      align-items: center;
+      padding: 0 32px;
+      color: var(--muted);
+      font-size: var(--footer-size);
+      font-weight: 600;
+    }
+
+    .footerAction {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      text-transform: none;
+    }
+
+    .footerAction img {
+      width: 30px;
+      height: 30px;
+      display: block;
+    }
+
+    .footerAction.right {
+      justify-content: flex-end;
+      text-align: right;
+    }
+
+    .footerDivider {
+      width: 2px;
+      height: 26px;
+      background: var(--line);
+    }
+
+    .controls {
+      display: grid;
+      gap: 16px;
+    }
+
+    .panel {
+      background: rgba(18, 22, 27, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 18px;
+    }
+
+    h1, h2 {
+      margin: 0;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      font-size: 24px;
+    }
+
+    h2 {
+      margin-bottom: 14px;
+      color: #d8dee7;
+      font-size: 15px;
+    }
+
+    p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .field {
+      display: grid;
+      grid-template-columns: 128px 1fr 46px;
+      gap: 12px;
+      align-items: center;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #cbd2dc;
+    }
+
+    .field select,
+    .field input[type="range"],
+    .field input[type="color"] {
+      width: 100%;
+    }
+
+    select,
+    button,
+    textarea {
+      color: var(--ink);
+      background: #151a20;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      font: inherit;
+    }
+
+    input[type="color"] {
+      height: 36px;
+      padding: 2px;
+      background: #151a20;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    select,
+    button {
+      min-height: 36px;
+      padding: 0 10px;
+    }
+
+    button {
+      cursor: pointer;
+      background: #1c2730;
+    }
+
+    .presetRow {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 210px;
+      padding: 12px;
+      resize: vertical;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 980px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="previewWrap">
+      <div class="previewTitle">
+        <strong>640 x 480 launcher preview</strong>
+        <span>Click a row to preview selected icons</span>
+      </div>
+      <div class="screen" id="screen">
+        <div class="status">
+          <div class="brand"><img src="icons/onyx-logo-header.png" alt="ONYX"></div>
+          <div class="clock">10:30</div>
+          <div class="battery"><span>83%</span><span class="batteryIcon"></span></div>
+        </div>
+        <div class="list" id="list"></div>
+        <div class="footer">
+          <span class="footerAction"><img src="icons/button-a.png" alt=""><span>Select</span></span>
+          <span class="footerDivider"></span>
+          <span class="footerAction right"><img src="icons/button-b.png" alt=""><span>Back</span></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <div class="panel">
+        <h1>Onyx Type Lab</h1>
+        <p>Tune this until it feels right. The code block below updates live, so paste it back to me when you like a combo.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Presets</h2>
+        <div class="presetRow">
+          <button type="button" data-preset="compact">Compact</button>
+          <button type="button" data-preset="balanced">Balanced</button>
+          <button type="button" data-preset="airy">Airy</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Font And Scale</h2>
+        <label class="field">
+          <span>Font</span>
+          <select id="fontFamily">
+            <option value="Inter, system-ui, sans-serif">Inter</option>
+            <option value='"Saira Semi Condensed", "Bahnschrift", system-ui, sans-serif' selected>Saira Semi Condensed</option>
+            <option value='"Barlow Semi Condensed", "Bahnschrift", system-ui, sans-serif'>Barlow Semi Condensed</option>
+            <option value='Rajdhani, "Bahnschrift", system-ui, sans-serif'>Rajdhani</option>
+            <option value='Oxanium, "Bahnschrift", system-ui, sans-serif'>Oxanium</option>
+            <option value='"Bahnschrift", "Segoe UI", system-ui, sans-serif'>Bahnschrift</option>
+            <option value='"Segoe UI Semilight", "Segoe UI", system-ui, sans-serif'>Segoe UI Semilight</option>
+            <option value='"Segoe UI Light", "Segoe UI", system-ui, sans-serif'>Segoe UI Light</option>
+            <option value='"Onion Helvetica", "Segoe UI", system-ui, sans-serif'>Onion Helvetica</option>
+            <option value='"Onion Exo", "Segoe UI", system-ui, sans-serif'>Onion Exo Italic</option>
+            <option value='"Onion BPreplay", "Segoe UI", system-ui, sans-serif'>Onion BPreplay</option>
+            <option value='Arial, sans-serif'>Arial</option>
+          </select>
+          <span></span>
+        </label>
+        <label class="field">
+          <span>Brand size</span>
+          <input id="brandSize" type="range" min="12" max="32" value="17">
+          <output>17</output>
+        </label>
+        <label class="field">
+          <span>Title size</span>
+          <input id="titleSize" type="range" min="15" max="36" value="30">
+          <output>30</output>
+        </label>
+        <label class="field">
+          <span>Footer size</span>
+          <input id="footerSize" type="range" min="10" max="22" value="20">
+          <output>20</output>
+        </label>
+        <label class="field">
+          <span>Item height</span>
+          <input id="itemHeight" type="range" min="44" max="120" value="70">
+          <output>70</output>
+        </label>
+        <label class="field">
+          <span>Item gap</span>
+          <input id="itemGap" type="range" min="0" max="24" value="0">
+          <output>0</output>
+        </label>
+        <label class="field">
+          <span>Icon size</span>
+          <input id="iconSize" type="range" min="26" max="64" value="38">
+          <output>38</output>
+        </label>
+        <label class="field">
+          <span>List top</span>
+          <input id="listTop" type="range" min="54" max="118" value="81">
+          <output>81</output>
+        </label>
+      </div>
+
+      <div class="panel">
+        <h2>Colors</h2>
+        <label class="field">
+          <span>Background</span>
+          <input id="screenBg" type="color" value="#0e1114">
+          <output>#0e1114</output>
+        </label>
+        <label class="field">
+          <span>Status bar</span>
+          <input id="statusBg" type="color" value="#111418">
+          <output>#111418</output>
+        </label>
+        <label class="field">
+          <span>Row fill</span>
+          <input id="rowBg" type="color" value="#161c21">
+          <output>#161c21</output>
+        </label>
+        <label class="field">
+          <span>Row border</span>
+          <input id="rowBorder" type="color" value="#0e1114">
+          <output>#0e1114</output>
+        </label>
+        <label class="field">
+          <span>Active fill</span>
+          <input id="activeBg" type="color" value="#1c65db">
+          <output>#1c65db</output>
+        </label>
+        <label class="field">
+          <span>Active border</span>
+          <input id="activeBorder" type="color" value="#1c65db">
+          <output>#1c65db</output>
+        </label>
+        <label class="field">
+          <span>Main text</span>
+          <input id="textMain" type="color" value="#eef2f6">
+          <output>#eef2f6</output>
+        </label>
+        <label class="field">
+          <span>Dim text</span>
+          <input id="textDim" type="color" value="#9ca3ad">
+          <output>#9ca3ad</output>
+        </label>
+        <label class="field">
+          <span>Accent</span>
+          <input id="accent" type="color" value="#dd7600">
+          <output>#dd7600</output>
+        </label>
+      </div>
+
+      <div class="panel">
+        <h2>Paste This Back To Me</h2>
+        <textarea id="config" spellcheck="false"></textarea>
+        <div class="actions">
+          <button type="button" id="copyConfig">Copy config</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const items = [
+      { key: "favorites", title: "Favorites" },
+      { key: "games", title: "Games" },
+      { key: "apps", title: "Apps" },
+      { key: "settings", title: "Settings" }
+    ];
+
+    const presets = {
+      compact: {
+        fontFamily: "Inter, system-ui, sans-serif",
+        brandSize: 16,
+        titleSize: 22,
+        footerSize: 13,
+        itemHeight: 84,
+        itemGap: 0,
+        iconSize: 42,
+        listTop: 68,
+        screenBg: "#0e1114",
+        statusBg: "#111519",
+        rowBg: "#0e1114",
+        rowBorder: "#1f242a",
+        activeBg: "#3ba99c",
+        activeBorder: "#e0b24a",
+        textMain: "#eef2f6",
+        textDim: "#9ca3ad",
+        accent: "#e0b24a"
+      },
+      balanced: {
+        fontFamily: "\"Saira Semi Condensed\", \"Bahnschrift\", system-ui, sans-serif",
+        brandSize: 17,
+        titleSize: 30,
+        footerSize: 20,
+        itemHeight: 70,
+        itemGap: 0,
+        iconSize: 38,
+        listTop: 81,
+        screenBg: "#0e1114",
+        statusBg: "#111418",
+        rowBg: "#161c21",
+        rowBorder: "#0e1114",
+        activeBg: "#1c65db",
+        activeBorder: "#1c65db",
+        textMain: "#eef2f6",
+        textDim: "#9ca3ad",
+        accent: "#dd7600"
+      },
+      airy: {
+        fontFamily: "Atkinson Hyperlegible, system-ui, sans-serif",
+        brandSize: 18,
+        titleSize: 26,
+        footerSize: 15,
+        itemHeight: 88,
+        itemGap: 0,
+        iconSize: 50,
+        listTop: 60,
+        screenBg: "#0c0f12",
+        statusBg: "#101418",
+        rowBg: "#0c0f12",
+        rowBorder: "#2e3842",
+        activeBg: "#26313a",
+        activeBorder: "#46beb2",
+        textMain: "#f2f5f8",
+        textDim: "#a5adb8",
+        accent: "#e0b24a"
+      }
+    };
+
+    const controls = [
+      "fontFamily",
+      "brandSize",
+      "titleSize",
+      "footerSize",
+      "itemHeight",
+      "itemGap",
+      "iconSize",
+      "listTop",
+      "screenBg",
+      "statusBg",
+      "rowBg",
+      "rowBorder",
+      "activeBg",
+      "activeBorder",
+      "textMain",
+      "textDim",
+      "accent"
+    ];
+
+    let selected = 0;
+
+    function renderList() {
+      const list = document.getElementById("list");
+      list.innerHTML = "";
+      for (const [index, item] of items.entries()) {
+        const active = index === selected;
+        const row = document.createElement("button");
+        row.className = `item${active ? " active" : ""}`;
+        row.type = "button";
+        row.addEventListener("click", () => {
+          selected = index;
+          renderList();
+        });
+
+        const img = document.createElement("img");
+        img.src = `icons/${item.key}-white.png`;
+        img.alt = "";
+
+        const copy = document.createElement("div");
+        copy.className = "copy";
+        copy.innerHTML = `<div class="title">${item.title}</div>`;
+
+        const chev = document.createElement("div");
+        chev.className = "chev";
+        const arrow = document.createElement("img");
+        arrow.src = `icons/square-rounded-arrow-right${active ? "-filled" : ""}.png`;
+        arrow.alt = "";
+        chev.append(arrow);
+
+        row.append(img, copy, chev);
+        list.append(row);
+      }
+    }
+
+    function getConfig() {
+      const config = {};
+      for (const id of controls) {
+        const el = document.getElementById(id);
+        config[id] = el.type === "range" ? Number(el.value) : el.value;
+      }
+      return config;
+    }
+
+    function applyConfig() {
+      const config = getConfig();
+      const root = document.documentElement;
+      root.style.setProperty("--ui-font", config.fontFamily);
+      root.style.setProperty("--brand-size", `${config.brandSize}px`);
+      root.style.setProperty("--title-size", `${config.titleSize}px`);
+      root.style.setProperty("--footer-size", `${config.footerSize}px`);
+      root.style.setProperty("--item-height", `${config.itemHeight}px`);
+      root.style.setProperty("--item-gap", `${config.itemGap}px`);
+      root.style.setProperty("--icon-size", `${config.iconSize}px`);
+      root.style.setProperty("--list-top", `${config.listTop}px`);
+      root.style.setProperty("--screen-bg", config.screenBg);
+      root.style.setProperty("--status-bg", config.statusBg);
+      root.style.setProperty("--row-bg", config.rowBg);
+      root.style.setProperty("--row-border", config.rowBorder);
+      root.style.setProperty("--blue", config.activeBg);
+      root.style.setProperty("--teal", config.activeBorder);
+      root.style.setProperty("--ink", config.textMain);
+      root.style.setProperty("--muted", config.textDim);
+      root.style.setProperty("--amber", config.accent);
+
+      for (const id of controls) {
+        const el = document.getElementById(id);
+        const output = el.closest(".field")?.querySelector("output");
+        if (output) output.textContent = el.value;
+      }
+
+      const payload = {
+        ...config,
+        fullScreenMenu: false,
+        fillsUsableMenuSpace: false,
+        showHints: false,
+        selectedIconStyle: "white PNG",
+        menuItems: ["Favorites", "Games", "Apps", "Settings"]
+      };
+      document.getElementById("config").value = `ONYX_UI_CONFIG\n${JSON.stringify(payload, null, 2)}`;
+    }
+
+    function setConfig(config) {
+      for (const [key, value] of Object.entries(config)) {
+        const el = document.getElementById(key);
+        if (el) el.value = value;
+      }
+      applyConfig();
+    }
+
+    for (const id of controls) {
+      document.getElementById(id).addEventListener("input", applyConfig);
+    }
+
+    for (const button of document.querySelectorAll("[data-preset]")) {
+      button.addEventListener("click", () => setConfig(presets[button.dataset.preset]));
+    }
+
+    document.getElementById("copyConfig").addEventListener("click", async () => {
+      const value = document.getElementById("config").value;
+      await navigator.clipboard.writeText(value);
+    });
+
+    renderList();
+    applyConfig();
+  </script>
+</body>
+</html>
