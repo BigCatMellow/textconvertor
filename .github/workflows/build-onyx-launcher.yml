@@ -1,0 +1,59 @@
+name: Build Onyx Launcher
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "src/onyxLauncher/**"
+      - "scripts/**"
+      - ".github/workflows/build-onyx-launcher.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout builder overlay
+        uses: actions/checkout@v4
+
+      - name: Clone Onion v4.3.1-1
+        run: |
+          git clone --depth 1 --branch v4.3.1-1 https://github.com/OnionUI/Onion.git Onion
+
+      - name: Apply Onyx overlay
+        run: |
+          bash scripts/apply-overlay.sh Onion
+          mkdir -p Onion/out package/bin package/script package/source
+
+      - name: Pull Miyoo toolchain
+        run: docker pull aemiii91/miyoomini-toolchain:latest
+
+      - name: Build launcher
+        run: |
+          docker run --rm \
+            -v "$PWD/Onion:/root/workspace" \
+            aemiii91/miyoomini-toolchain:latest \
+            /bin/bash -lc 'source /root/.bashrc; cd /root/workspace/src/onyxLauncher; BUILD_DIR=/root/workspace/out make'
+
+      - name: Package artifact
+        run: |
+          cp Onion/out/onyxLauncher package/bin/onyxLauncher
+          cp scripts/onyx_launcher.sh package/script/onyx_launcher.sh
+          cp src/onyxLauncher/onyxLauncher.c package/source/onyxLauncher.c
+          cp src/onyxLauncher/Makefile package/source/Makefile
+          chmod +x package/bin/onyxLauncher package/script/onyx_launcher.sh
+          cat > package/INSTALL.txt <<'TXT'
+          Copy bin/onyxLauncher to /mnt/SDCARD/.tmp_update/bin/onyxLauncher
+          Copy script/onyx_launcher.sh to /mnt/SDCARD/.tmp_update/script/onyx_launcher.sh
+
+          Enable:
+            /mnt/SDCARD/.tmp_update/script/onyx_launcher.sh
+
+          Disable:
+            /mnt/SDCARD/.tmp_update/script/onyx_launcher.sh off
+          TXT
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: onyx-launcher-package
+          path: package
