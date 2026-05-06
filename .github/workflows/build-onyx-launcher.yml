@@ -7,6 +7,7 @@ on:
       - "src/onyxLauncher/**"
       - "scripts/**"
       - "icons/**"
+      - "splash/**"
       - ".github/workflows/build-onyx-launcher.yml"
 
 jobs:
@@ -41,6 +42,7 @@ jobs:
           cp scripts/onyx_launcher.sh package/script/onyx_launcher.sh
           mkdir -p package/res/onyx/icons
           cp Onion/static/build/.tmp_update/res/onyx/icons/*.png package/res/onyx/icons/
+          cp Onion/static/build/.tmp_update/res/bootScreen.png package/res/bootScreen.png
           cp src/onyxLauncher/onyxLauncher.c package/source/onyxLauncher.c
           cp src/onyxLauncher/Makefile package/source/Makefile
           chmod +x package/bin/onyxLauncher package/script/onyx_launcher.sh
@@ -48,6 +50,7 @@ jobs:
           Copy bin/onyxLauncher to /mnt/SDCARD/.tmp_update/bin/onyxLauncher
           Copy script/onyx_launcher.sh to /mnt/SDCARD/.tmp_update/script/onyx_launcher.sh
           Copy res/onyx/icons to /mnt/SDCARD/.tmp_update/res/onyx/icons
+          Copy res/bootScreen.png to /mnt/SDCARD/.tmp_update/res/bootScreen.png
 
           Enable:
             /mnt/SDCARD/.tmp_update/script/onyx_launcher.sh

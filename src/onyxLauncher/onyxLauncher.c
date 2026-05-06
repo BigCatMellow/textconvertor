@@ -225,7 +225,7 @@ static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
                  TTF_Font *fontTitle, int selected)
 {
     SDL_Color bg = rgb(14, 17, 20);
-    SDL_Color panel = rgb(25, 29, 34);
+    SDL_Color panel = bg;
     SDL_Color line = rgb(64, 73, 82);
     SDL_Color textMain = rgb(232, 235, 240);
     SDL_Color textDim = rgb(154, 160, 170);

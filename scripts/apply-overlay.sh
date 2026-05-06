@@ -25,6 +25,12 @@ if compgen -G "$repo_root/icons/*.png.b64" > /dev/null; then
     done
 fi
 
+if [[ -f "$repo_root/splash/bootScreen.png.b64" ]]; then
+    base64 -d "$repo_root/splash/bootScreen.png.b64" > "$onion_root/static/build/.tmp_update/res/bootScreen.png"
+    mkdir -p "$onion_root/src/bootScreen/res"
+    cp "$onion_root/static/build/.tmp_update/res/bootScreen.png" "$onion_root/src/bootScreen/res/bootScreen.png"
+fi
+
 python3 - "$onion_root" <<'PY'
 from pathlib import Path
 import sys
