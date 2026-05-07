@@ -13,9 +13,9 @@
 #define SCREEN_W 640
 #define SCREEN_H 480
 #define ICON_SIZE 38
-#define PANEL_X 34
+#define PANEL_X 0
 #define PANEL_Y 24
-#define PANEL_W 572
+#define PANEL_W 640
 #define PANEL_H 392
 #define ITEM_H 70
 #define ITEM_GAP 0
@@ -265,12 +265,12 @@ static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
         int y = LIST_TOP + i * (ITEM_H + ITEM_GAP);
         bool active = i == selected;
 
-        fillRot(screen, 52, y, 536, ITEM_H, active ? blue : panel);
-        border(screen, 52, y, 536, ITEM_H, active ? teal : bg);
-        icon(screen, active ? ITEMS[i].iconFilled : ITEMS[i].icon, 76, y + 16, ICON_SIZE);
-        text(screen, fontTitle, ITEMS[i].title, 134, y + 17, textMain);
+        fillRot(screen, 0, y, 640, ITEM_H, active ? blue : panel);
+        border(screen, 0, y, 640, ITEM_H, active ? teal : bg);
+        icon(screen, active ? ITEMS[i].iconFilled : ITEMS[i].icon, 28, y + 16, ICON_SIZE);
+        text(screen, fontTitle, ITEMS[i].title, 86, y + 17, textMain);
         icon(screen, active ? "square-rounded-arrow-right-filled.png" : "square-rounded-arrow-right.png",
-             526, y + 16, ICON_SIZE);
+             574, y + 16, ICON_SIZE);
     }
 
     fillRot(screen, 320, 374, 2, 26, line);

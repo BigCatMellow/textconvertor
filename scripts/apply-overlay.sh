@@ -64,7 +64,7 @@ old = '''    # MainUI launch
         LD_PRELOAD="$miyoodir/lib/libpadsp.so" \\
         ./MainUI 2>&1 > /dev/null
 '''
-new = '''    # MainUI launch
+old_onyx = '''    # MainUI launch
     cd $miyoodir/app
     if [ -f "$sysdir/config/.useOnyxLauncher" ] && [ -x "$sysdir/bin/onyxLauncher" ]; then
         PATH="$miyoodir/app:$PATH" \\
@@ -78,9 +78,26 @@ new = '''    # MainUI launch
             ./MainUI 2>&1 > /dev/null
     fi
 '''
-if "useOnyxLauncher" not in runtime_text:
-    if old not in runtime_text:
+new = '''    # MainUI launch
+    cd $miyoodir/app
+    if [ -f "$sysdir/config/.useOnyxLauncher" ] && [ -x "$sysdir/bin/onyxLauncher" ]; then
+        PATH="$miyoodir/app:$PATH" \\
+            LD_LIBRARY_PATH="$miyoodir/lib:/config/lib:/lib" \\
+            LD_PRELOAD="$miyoodir/lib/libpadsp.so" \\
+            "$sysdir/bin/onyxLauncher" 2>&1 > /dev/null
+    fi
+
+    PATH="$miyoodir/app:$PATH" \\
+        LD_LIBRARY_PATH="$miyoodir/lib:/config/lib:/lib" \\
+        LD_PRELOAD="$miyoodir/lib/libpadsp.so" \\
+        ./MainUI 2>&1 > /dev/null
+'''
+if new not in runtime_text:
+    if old_onyx in runtime_text:
+        runtime_text = runtime_text.replace(old_onyx, new)
+    elif old in runtime_text:
+        runtime_text = runtime_text.replace(old, new)
+    else:
         raise SystemExit("Could not find MainUI launch block in runtime.sh")
-    runtime_text = runtime_text.replace(old, new)
     runtime.write_text(runtime_text)
 PY
