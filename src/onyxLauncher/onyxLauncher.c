@@ -17,7 +17,7 @@
 #define PANEL_Y 24
 #define PANEL_W 640
 #define PANEL_H 392
-#define ITEM_H 70
+#define ITEM_H 73
 #define ITEM_GAP 0
 #define LIST_TOP 81
 #define SYS_DIR "/mnt/SDCARD/.tmp_update"
