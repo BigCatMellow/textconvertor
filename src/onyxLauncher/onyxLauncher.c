@@ -1,11 +1,13 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
 #include <SDL/SDL_ttf.h>
+#include <dirent.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "system/keymap_sw.h"
@@ -20,25 +22,40 @@
 #define ITEM_H 73
 #define ITEM_GAP 0
 #define LIST_TOP 81
+#define VISIBLE_ROWS 4
+#define MAX_PAGE_ITEMS 64
 #define SYS_DIR "/mnt/SDCARD/.tmp_update"
 #define MIYOO_APP_DIR "/mnt/SDCARD/miyoo/app"
 #define ICON_DIR SYS_DIR "/res/onyx/icons"
+#define ROMS_DIR "/mnt/SDCARD/Roms"
+#define APPS_DIR "/mnt/SDCARD/App"
+
+#define ACTION_NONE -1
+#define ACTION_HOME_FAVORITES -10
+#define ACTION_HOME_GAMES -11
+#define ACTION_HOME_APPS -12
+#define ACTION_HOME_SETTINGS -13
+
+typedef enum {
+    VIEW_HOME,
+    VIEW_FAVORITES,
+    VIEW_GAMES,
+    VIEW_APPS,
+    VIEW_SETTINGS,
+} ViewMode;
 
 typedef struct {
+    char title[96];
     const char *icon;
-    const char *iconFilled;
-    const char *title;
-    int state;
-} LauncherItem;
-
-static const LauncherItem ITEMS[] = {
-    {"favorites-white.png", "favorites-white.png", "Favorites", 2},
-    {"games-white.png", "games-white.png", "Games", 3},
-    {"apps-white.png", "apps-white.png", "Apps", 5},
-    {"settings-white.png", "settings-white.png", "Settings", 0},
-};
+    int action;
+} PageItem;
 
 static bool quit = false;
+static ViewMode currentView = VIEW_HOME;
+static PageItem pageItems[MAX_PAGE_ITEMS];
+static int pageItemCount = 0;
+static int selected = 0;
+static int scrollOffset = 0;
 
 static void sigHandler(int sig)
 {
@@ -220,6 +237,105 @@ static void image(SDL_Surface *screen, const char *file, int x, int y)
     SDL_FreeSurface(loaded);
 }
 
+static void addPageItem(const char *title, const char *iconFile, int action)
+{
+    if (pageItemCount >= MAX_PAGE_ITEMS)
+        return;
+
+    snprintf(pageItems[pageItemCount].title, sizeof(pageItems[pageItemCount].title),
+             "%s", title);
+    pageItems[pageItemCount].icon = iconFile;
+    pageItems[pageItemCount].action = action;
+    pageItemCount++;
+}
+
+static bool isDirectoryPath(const char *path)
+{
+    struct stat info;
+    return stat(path, &info) == 0 && S_ISDIR(info.st_mode);
+}
+
+static void addDirectoriesFrom(const char *root, const char *iconFile)
+{
+    DIR *dir = opendir(root);
+    if (!dir)
+        return;
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_name[0] == '.')
+            continue;
+
+        char path[256];
+        snprintf(path, sizeof(path), "%s/%s", root, entry->d_name);
+        if (isDirectoryPath(path))
+            addPageItem(entry->d_name, iconFile, ACTION_NONE);
+    }
+
+    closedir(dir);
+}
+
+static void loadPage(ViewMode view)
+{
+    currentView = view;
+    pageItemCount = 0;
+    selected = 0;
+    scrollOffset = 0;
+
+    if (view == VIEW_HOME) {
+        addPageItem("Favorites", "favorites-white.png", ACTION_HOME_FAVORITES);
+        addPageItem("Games", "games-white.png", ACTION_HOME_GAMES);
+        addPageItem("Apps", "apps-white.png", ACTION_HOME_APPS);
+        addPageItem("Settings", "settings-white.png", ACTION_HOME_SETTINGS);
+        return;
+    }
+
+    if (view == VIEW_FAVORITES) {
+        addPageItem("Open Onion Favorites", "favorites-white.png", 2);
+        addPageItem("Pinned Games", "favorites-white.png", ACTION_NONE);
+        addPageItem("Collections", "favorites-white.png", ACTION_NONE);
+        return;
+    }
+
+    if (view == VIEW_GAMES) {
+        addPageItem("Open Onion Games", "games-white.png", 3);
+        addDirectoriesFrom(ROMS_DIR, "games-white.png");
+        if (pageItemCount == 1)
+            addPageItem("No systems found", "games-white.png", ACTION_NONE);
+        return;
+    }
+
+    if (view == VIEW_APPS) {
+        addPageItem("Open Onion Apps", "apps-white.png", 5);
+        addDirectoriesFrom(APPS_DIR, "apps-white.png");
+        if (pageItemCount == 1)
+            addPageItem("No apps found", "apps-white.png", ACTION_NONE);
+        return;
+    }
+
+    addPageItem("Open Onion Settings", "settings-white.png", 0);
+    addPageItem("Interface", "settings-white.png", ACTION_NONE);
+    addPageItem("System", "settings-white.png", ACTION_NONE);
+    addPageItem("About ONYX", "settings-white.png", ACTION_NONE);
+}
+
+static void moveSelection(int delta)
+{
+    if (pageItemCount <= 0)
+        return;
+
+    selected += delta;
+    if (selected < 0)
+        selected = pageItemCount - 1;
+    else if (selected >= pageItemCount)
+        selected = 0;
+
+    if (selected < scrollOffset)
+        scrollOffset = selected;
+    else if (selected >= scrollOffset + VISIBLE_ROWS)
+        scrollOffset = selected - VISIBLE_ROWS + 1;
+}
+
 static TTF_Font *openFont(int size)
 {
     const char *paths[] = {
@@ -240,8 +356,10 @@ static TTF_Font *openFont(int size)
 }
 
 static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
-                 TTF_Font *fontTitle, int selected)
+                 TTF_Font *fontTitle)
 {
+    (void)fontBrand;
+
     SDL_Color bg = rgb(14, 17, 20);
     SDL_Color panel = rgb(22, 28, 33);
     SDL_Color panelDark = rgb(17, 20, 24);
@@ -250,7 +368,6 @@ static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
     SDL_Color textDim = rgb(154, 160, 170);
     SDL_Color teal = rgb(28, 101, 219);
     SDL_Color blue = rgb(28, 101, 219);
-    SDL_Color amber = rgb(221, 118, 0);
 
     fill(screen, 0, 0, SCREEN_W, SCREEN_H, bg);
     fillRot(screen, PANEL_X, PANEL_Y, PANEL_W, PANEL_H, panelDark);
@@ -261,14 +378,18 @@ static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
     text(screen, fontFooter, "83%", 520, 40, textMain);
     border(screen, 574, 42, 22, 12, textDim);
 
-    for (int i = 0; i < (int)(sizeof(ITEMS) / sizeof(ITEMS[0])); i++) {
-        int y = LIST_TOP + i * (ITEM_H + ITEM_GAP);
-        bool active = i == selected;
+    for (int row = 0; row < VISIBLE_ROWS; row++) {
+        int itemIndex = scrollOffset + row;
+        if (itemIndex >= pageItemCount)
+            break;
+
+        int y = LIST_TOP + row * (ITEM_H + ITEM_GAP);
+        bool active = itemIndex == selected;
 
         fillRot(screen, 0, y, 640, ITEM_H, active ? blue : panel);
         border(screen, 0, y, 640, ITEM_H, active ? teal : bg);
-        icon(screen, active ? ITEMS[i].iconFilled : ITEMS[i].icon, 28, y + 16, ICON_SIZE);
-        text(screen, fontTitle, ITEMS[i].title, 86, y + 17, textMain);
+        icon(screen, pageItems[itemIndex].icon, 28, y + 16, ICON_SIZE);
+        text(screen, fontTitle, pageItems[itemIndex].title, 86, y + 17, textMain);
         icon(screen, active ? "square-rounded-arrow-right-filled.png" : "square-rounded-arrow-right.png",
              574, y + 16, ICON_SIZE);
     }
@@ -288,6 +409,24 @@ static void handoffToRuntime(int state)
     snprintf(command, sizeof(command), SYS_DIR "/bin/setState %d", state);
     system(command);
     quit = true;
+}
+
+static void activateSelection(void)
+{
+    if (pageItemCount <= 0)
+        return;
+
+    int action = pageItems[selected].action;
+    if (action == ACTION_HOME_FAVORITES)
+        loadPage(VIEW_FAVORITES);
+    else if (action == ACTION_HOME_GAMES)
+        loadPage(VIEW_GAMES);
+    else if (action == ACTION_HOME_APPS)
+        loadPage(VIEW_APPS);
+    else if (action == ACTION_HOME_SETTINGS)
+        loadPage(VIEW_SETTINGS);
+    else if (action >= 0)
+        handoffToRuntime(action);
 }
 
 int main(int argc, char *argv[])
@@ -322,8 +461,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    int selected = 0;
-    draw(screen, fontFooter, fontBrand, fontTitle, selected);
+    loadPage(VIEW_HOME);
+    draw(screen, fontFooter, fontBrand, fontTitle);
 
     while (!quit) {
         SDL_Event event;
@@ -338,20 +477,25 @@ int main(int argc, char *argv[])
 
         SDLKey key = event.key.keysym.sym;
         if (key == SW_BTN_DOWN) {
-            selected = (selected + 1) % (int)(sizeof(ITEMS) / sizeof(ITEMS[0]));
-            draw(screen, fontFooter, fontBrand, fontTitle, selected);
+            moveSelection(1);
+            draw(screen, fontFooter, fontBrand, fontTitle);
         }
         else if (key == SW_BTN_UP) {
-            selected--;
-            if (selected < 0)
-                selected = (int)(sizeof(ITEMS) / sizeof(ITEMS[0])) - 1;
-            draw(screen, fontFooter, fontBrand, fontTitle, selected);
+            moveSelection(-1);
+            draw(screen, fontFooter, fontBrand, fontTitle);
         }
         else if (key == SW_BTN_A) {
-            handoffToRuntime(ITEMS[selected].state);
+            activateSelection();
+            if (!quit)
+                draw(screen, fontFooter, fontBrand, fontTitle);
         }
         else if (key == SW_BTN_B || key == SW_BTN_MENU) {
-            handoffToRuntime(0);
+            if (currentView == VIEW_HOME)
+                handoffToRuntime(0);
+            else {
+                loadPage(VIEW_HOME);
+                draw(screen, fontFooter, fontBrand, fontTitle);
+            }
         }
     }
 
