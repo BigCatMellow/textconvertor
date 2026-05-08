@@ -27,7 +27,10 @@
 #define SYS_DIR "/mnt/SDCARD/.tmp_update"
 #define MIYOO_APP_DIR "/mnt/SDCARD/miyoo/app"
 #define ICON_DIR SYS_DIR "/res/onyx/icons"
+#define FAVORITES_FILE SYS_DIR "/config/onyx_favorites.tsv"
 #define ROMS_DIR "/mnt/SDCARD/Roms"
+#define ONION_FAVORITES_FILE ROMS_DIR "/favourite.json"
+#define ONION_RECENTS_FILE ROMS_DIR "/recentlist.json"
 #define APPS_DIR "/mnt/SDCARD/App"
 #define EMU_DIR "/mnt/SDCARD/Emu"
 
@@ -39,6 +42,9 @@
 #define ACTION_OPEN_SYSTEM -20
 #define ACTION_LAUNCH_ROM -21
 #define ACTION_LAUNCH_APP -22
+#define ACTION_DISABLE_ONYX -23
+#define ACTION_CONFIRM_DISABLE_ONYX -24
+#define ACTION_CANCEL_CONFIRM -25
 
 typedef enum {
     VIEW_HOME,
@@ -47,6 +53,7 @@ typedef enum {
     VIEW_APPS,
     VIEW_SETTINGS,
     VIEW_SYSTEM_ROMS,
+    VIEW_CONFIRM_DISABLE,
 } ViewMode;
 
 typedef struct {
@@ -108,80 +115,6 @@ static void border(SDL_Surface *screen, int x, int y, int w, int h, SDL_Color co
     fillRot(screen, x, y + h - 2, w, 2, color);
     fillRot(screen, x, y, 2, h, color);
     fillRot(screen, x + w - 2, y, 2, h, color);
-}
-
-static int scaleUnit(int origin, int size, int value)
-{
-    return origin + value * size / 24;
-}
-
-static void glyphLine(SDL_Surface *screen, int x1, int y1, int x2, int y2, SDL_Color color)
-{
-    int dx = abs(x2 - x1);
-    int sx = x1 < x2 ? 1 : -1;
-    int dy = -abs(y2 - y1);
-    int sy = y1 < y2 ? 1 : -1;
-    int err = dx + dy;
-
-    for (;;) {
-        fillRot(screen, x1, y1, 2, 2, color);
-        if (x1 == x2 && y1 == y2)
-            break;
-        int e2 = 2 * err;
-        if (e2 >= dy) {
-            err += dy;
-            x1 += sx;
-        }
-        if (e2 <= dx) {
-            err += dx;
-            y1 += sy;
-        }
-    }
-}
-
-static void glyphRect(SDL_Surface *screen, int x, int y, int w, int h, SDL_Color color)
-{
-    glyphLine(screen, x, y, x + w, y, color);
-    glyphLine(screen, x + w, y, x + w, y + h, color);
-    glyphLine(screen, x + w, y + h, x, y + h, color);
-    glyphLine(screen, x, y + h, x, y, color);
-}
-
-static void glyphCircle(SDL_Surface *screen, int cx, int cy, int r, SDL_Color color)
-{
-    int x = r;
-    int y = 0;
-    int err = 0;
-
-    while (x >= y) {
-        fillRot(screen, cx + x, cy + y, 2, 2, color);
-        fillRot(screen, cx + y, cy + x, 2, 2, color);
-        fillRot(screen, cx - y, cy + x, 2, 2, color);
-        fillRot(screen, cx - x, cy + y, 2, 2, color);
-        fillRot(screen, cx - x, cy - y, 2, 2, color);
-        fillRot(screen, cx - y, cy - x, 2, 2, color);
-        fillRot(screen, cx + y, cy - x, 2, 2, color);
-        fillRot(screen, cx + x, cy - y, 2, 2, color);
-
-        if (err <= 0) {
-            y++;
-            err += 2 * y + 1;
-        }
-        if (err > 0) {
-            x--;
-            err -= 2 * x + 1;
-        }
-    }
-}
-
-static void glyphFillCircle(SDL_Surface *screen, int cx, int cy, int r, SDL_Color color)
-{
-    for (int y = -r; y <= r; y++) {
-        for (int x = -r; x <= r; x++) {
-            if (x * x + y * y <= r * r)
-                fillRot(screen, cx + x, cy + y, 2, 2, color);
-        }
-    }
 }
 
 static Uint32 getPixel(SDL_Surface *surface, int x, int y)
@@ -262,6 +195,25 @@ static void text(SDL_Surface *screen, TTF_Font *font, const char *value, int x, 
     SDL_FreeSurface(surface);
 }
 
+static void truncateText(const char *value, char *out, size_t outSize, size_t maxChars)
+{
+    size_t length = strlen(value);
+    if (outSize == 0)
+        return;
+
+    if (length <= maxChars || maxChars + 1 >= outSize) {
+        snprintf(out, outSize, "%s", value);
+        return;
+    }
+
+    if (maxChars < 4) {
+        snprintf(out, outSize, "%.*s", (int)maxChars, value);
+        return;
+    }
+
+    snprintf(out, outSize, "%.*s...", (int)(maxChars - 3), value);
+}
+
 static SDL_Surface *scaleIcon(SDL_Surface *src, int size)
 {
     SDL_Surface *scaled = SDL_CreateRGBSurface(SDL_SWSURFACE, size, size, 32,
@@ -323,132 +275,6 @@ static void image(SDL_Surface *screen, const char *file, int x, int y)
     SDL_FreeSurface(loaded);
 }
 
-static void drawGlyphIcon(SDL_Surface *screen, const char *name, int x, int y, int size,
-                          SDL_Color color)
-{
-    int x0 = x;
-    int y0 = y;
-#define SX(v) scaleUnit(x0, size, (v))
-#define SY(v) scaleUnit(y0, size, (v))
-
-    if (strcmp(name, "star") == 0) {
-        glyphLine(screen, SX(12), SY(3), SX(15), SY(9), color);
-        glyphLine(screen, SX(15), SY(9), SX(22), SY(9), color);
-        glyphLine(screen, SX(22), SY(9), SX(17), SY(14), color);
-        glyphLine(screen, SX(17), SY(14), SX(19), SY(21), color);
-        glyphLine(screen, SX(19), SY(21), SX(12), SY(17), color);
-        glyphLine(screen, SX(12), SY(17), SX(5), SY(21), color);
-        glyphLine(screen, SX(5), SY(21), SX(7), SY(14), color);
-        glyphLine(screen, SX(7), SY(14), SX(2), SY(9), color);
-        glyphLine(screen, SX(2), SY(9), SX(9), SY(9), color);
-        glyphLine(screen, SX(9), SY(9), SX(12), SY(3), color);
-    }
-    else if (strcmp(name, "gamepad") == 0) {
-        glyphRect(screen, SX(4), SY(7), SX(16) - SX(4), SY(10) - SY(7), color);
-        glyphLine(screen, SX(7), SY(12), SX(11), SY(12), color);
-        glyphLine(screen, SX(9), SY(10), SX(9), SY(14), color);
-        glyphFillCircle(screen, SX(16), SY(12), 2, color);
-        glyphFillCircle(screen, SX(19), SY(14), 2, color);
-        glyphLine(screen, SX(4), SY(7), SX(2), SY(13), color);
-        glyphLine(screen, SX(20), SY(7), SX(22), SY(13), color);
-        glyphLine(screen, SX(2), SY(13), SX(4), SY(17), color);
-        glyphLine(screen, SX(22), SY(13), SX(20), SY(17), color);
-        glyphLine(screen, SX(4), SY(17), SX(9), SY(15), color);
-        glyphLine(screen, SX(20), SY(17), SX(15), SY(15), color);
-    }
-    else if (strcmp(name, "cartridge") == 0) {
-        glyphRect(screen, SX(5), SY(4), SX(19) - SX(5), SY(20) - SY(4), color);
-        glyphLine(screen, SX(16), SY(4), SX(19), SY(7), color);
-        glyphLine(screen, SX(8), SY(8), SX(16), SY(8), color);
-        glyphLine(screen, SX(8), SY(12), SX(14), SY(12), color);
-    }
-    else if (strcmp(name, "arcade") == 0) {
-        glyphRect(screen, SX(5), SY(3), SX(19) - SX(5), SY(21) - SY(3), color);
-        glyphRect(screen, SX(7), SY(7), SX(17) - SX(7), SY(12) - SY(7), color);
-        glyphLine(screen, SX(9), SY(16), SX(15), SY(16), color);
-        glyphFillCircle(screen, SX(12), SY(19), 2, color);
-    }
-    else if (strcmp(name, "console") == 0) {
-        glyphRect(screen, SX(3), SY(7), SX(21) - SX(3), SY(18) - SY(7), color);
-        glyphLine(screen, SX(7), SY(12), SX(9), SY(12), color);
-        glyphLine(screen, SX(16), SY(10), SX(16), SY(14), color);
-        glyphLine(screen, SX(14), SY(12), SX(18), SY(12), color);
-    }
-    else if (strcmp(name, "handheld") == 0) {
-        glyphRect(screen, SX(4), SY(3), SX(20) - SX(4), SY(21) - SY(3), color);
-        glyphRect(screen, SX(7), SY(6), SX(17) - SX(7), SY(13) - SY(6), color);
-        glyphFillCircle(screen, SX(9), SY(17), 2, color);
-        glyphFillCircle(screen, SX(15), SY(17), 2, color);
-    }
-    else if (strcmp(name, "retroarch") == 0) {
-        glyphCircle(screen, SX(12), SY(12), size * 9 / 24, color);
-        glyphLine(screen, SX(12), SY(7), SX(12), SY(12), color);
-        glyphLine(screen, SX(12), SY(12), SX(15), SY(14), color);
-    }
-    else if (strcmp(name, "port") == 0) {
-        glyphLine(screen, SX(4), SY(6), SX(16), SY(6), color);
-        glyphLine(screen, SX(16), SY(6), SX(20), SY(10), color);
-        glyphLine(screen, SX(20), SY(10), SX(20), SY(18), color);
-        glyphLine(screen, SX(20), SY(18), SX(4), SY(18), color);
-        glyphLine(screen, SX(4), SY(18), SX(4), SY(6), color);
-        glyphLine(screen, SX(16), SY(6), SX(16), SY(10), color);
-        glyphLine(screen, SX(16), SY(10), SX(20), SY(10), color);
-        glyphLine(screen, SX(8), SY(14), SX(14), SY(14), color);
-    }
-    else if (strcmp(name, "music") == 0) {
-        glyphLine(screen, SX(9), SY(18), SX(9), SY(5), color);
-        glyphLine(screen, SX(9), SY(5), SX(20), SY(3), color);
-        glyphLine(screen, SX(20), SY(3), SX(20), SY(16), color);
-        glyphCircle(screen, SX(6), SY(18), size * 3 / 24, color);
-        glyphCircle(screen, SX(17), SY(16), size * 3 / 24, color);
-    }
-    else if (strcmp(name, "wifi") == 0) {
-        glyphLine(screen, SX(2), SY(9), SX(7), SY(6), color);
-        glyphLine(screen, SX(7), SY(6), SX(12), SY(5), color);
-        glyphLine(screen, SX(12), SY(5), SX(17), SY(6), color);
-        glyphLine(screen, SX(17), SY(6), SX(22), SY(9), color);
-        glyphLine(screen, SX(5), SY(13), SX(9), SY(11), color);
-        glyphLine(screen, SX(9), SY(11), SX(12), SY(10), color);
-        glyphLine(screen, SX(12), SY(10), SX(15), SY(11), color);
-        glyphLine(screen, SX(15), SY(11), SX(19), SY(13), color);
-        glyphLine(screen, SX(8), SY(17), SX(12), SY(15), color);
-        glyphLine(screen, SX(12), SY(15), SX(16), SY(17), color);
-        glyphFillCircle(screen, SX(12), SY(20), 2, color);
-    }
-    else if (strcmp(name, "display") == 0) {
-        glyphRect(screen, SX(3), SY(4), SX(21) - SX(3), SY(16) - SY(4), color);
-        glyphLine(screen, SX(12), SY(16), SX(12), SY(20), color);
-        glyphLine(screen, SX(8), SY(20), SX(16), SY(20), color);
-    }
-    else if (strcmp(name, "sound") == 0) {
-        glyphLine(screen, SX(3), SY(10), SX(6), SY(10), color);
-        glyphLine(screen, SX(6), SY(10), SX(11), SY(6), color);
-        glyphLine(screen, SX(11), SY(6), SX(11), SY(18), color);
-        glyphLine(screen, SX(11), SY(18), SX(6), SY(14), color);
-        glyphLine(screen, SX(6), SY(14), SX(3), SY(14), color);
-        glyphLine(screen, SX(16), SY(8), SX(18), SY(12), color);
-        glyphLine(screen, SX(18), SY(12), SX(16), SY(16), color);
-        glyphLine(screen, SX(19), SY(5), SX(22), SY(12), color);
-        glyphLine(screen, SX(22), SY(12), SX(19), SY(19), color);
-    }
-    else if (strcmp(name, "info") == 0) {
-        glyphCircle(screen, SX(12), SY(12), size * 9 / 24, color);
-        glyphLine(screen, SX(12), SY(11), SX(12), SY(16), color);
-        glyphFillCircle(screen, SX(12), SY(8), 2, color);
-    }
-    else {
-        glyphLine(screen, SX(3), SY(7), SX(9), SY(7), color);
-        glyphLine(screen, SX(9), SY(7), SX(11), SY(9), color);
-        glyphLine(screen, SX(11), SY(9), SX(21), SY(9), color);
-        glyphLine(screen, SX(21), SY(9), SX(21), SY(19), color);
-        glyphLine(screen, SX(21), SY(19), SX(3), SY(19), color);
-        glyphLine(screen, SX(3), SY(19), SX(3), SY(7), color);
-    }
-
-#undef SX
-#undef SY
-}
-
 static void addPageItem(const char *title, const char *subtitle, const char *iconFile,
                         int action, const char *target, const char *aux)
 {
@@ -498,6 +324,44 @@ static void configValue(const char *path, const char *key, char *out, size_t out
     }
 
     fclose(file);
+}
+
+static void jsonLineValue(const char *line, const char *key, char *out, size_t outSize)
+{
+    out[0] = '\0';
+    char needle[64];
+    snprintf(needle, sizeof(needle), "\"%s\"", key);
+
+    const char *found = strstr(line, needle);
+    if (!found)
+        return;
+
+    const char *colon = strchr(found, ':');
+    const char *start = colon ? strchr(colon, '"') : NULL;
+    if (!start)
+        return;
+
+    const char *p = start + 1;
+    size_t pos = 0;
+    while (*p && pos + 1 < outSize) {
+        if (*p == '"' && p[-1] != '\\')
+            break;
+        out[pos++] = *p++;
+    }
+    out[pos] = '\0';
+}
+
+static void normalizeSdPath(const char *path, char *out, size_t outSize)
+{
+    snprintf(out, outSize, "%s", path);
+
+    char *emuPrefix = strstr(out, "/mnt/SDCARD/Emu/");
+    char *romsPart = strstr(out, "/../../Roms/");
+    if (emuPrefix && romsPart) {
+        char normalized[256];
+        snprintf(normalized, sizeof(normalized), "/mnt/SDCARD/Roms/%s", romsPart + 13);
+        snprintf(out, outSize, "%s", normalized);
+    }
 }
 
 static bool isDirectoryPath(const char *path)
@@ -554,6 +418,131 @@ static void displayNameFromFile(const char *fileName, char *out, size_t outSize)
     char *dot = strrchr(out, '.');
     if (dot)
         *dot = '\0';
+}
+
+static void trimLine(char *line)
+{
+    size_t length = strlen(line);
+    while (length > 0 && (line[length - 1] == '\n' || line[length - 1] == '\r')) {
+        line[length - 1] = '\0';
+        length--;
+    }
+}
+
+static bool isFavoritePath(const char *romPath)
+{
+    FILE *file = fopen(FAVORITES_FILE, "r");
+    if (!file)
+        return false;
+
+    char line[640];
+    while (fgets(line, sizeof(line), file)) {
+        trimLine(line);
+        char *path = strrchr(line, '\t');
+        if (path && strcmp(path + 1, romPath) == 0) {
+            fclose(file);
+            return true;
+        }
+    }
+
+    fclose(file);
+    return false;
+}
+
+static void addFavoritesFromFile(void)
+{
+    FILE *file = fopen(FAVORITES_FILE, "r");
+    if (!file)
+        return;
+
+    char line[640];
+    while (fgets(line, sizeof(line), file)) {
+        trimLine(line);
+        char *system = strtok(line, "\t");
+        char *label = strtok(NULL, "\t");
+        char *title = strtok(NULL, "\t");
+        char *path = strtok(NULL, "\t");
+        if (system && label && title && path)
+            addPageItem(title, label, "html-favorites.png", ACTION_LAUNCH_ROM, path, system);
+    }
+
+    fclose(file);
+}
+
+static void addOnionJsonList(const char *path, int limit)
+{
+    FILE *file = fopen(path, "r");
+    if (!file)
+        return;
+
+    char line[768];
+    while (pageItemCount < limit && fgets(line, sizeof(line), file)) {
+        char label[96];
+        char romPath[256];
+        char launchPath[256];
+        char normalizedPath[256];
+        char system[64] = "";
+
+        jsonLineValue(line, "label", label, sizeof(label));
+        jsonLineValue(line, "rompath", romPath, sizeof(romPath));
+        jsonLineValue(line, "launch", launchPath, sizeof(launchPath));
+        normalizeSdPath(romPath, normalizedPath, sizeof(normalizedPath));
+
+        char *emu = strstr(launchPath, "/Emu/");
+        if (emu) {
+            char *start = emu + 5;
+            char *end = strchr(start, '/');
+            if (end) {
+                size_t length = (size_t)(end - start);
+                if (length >= sizeof(system))
+                    length = sizeof(system) - 1;
+                memcpy(system, start, length);
+                system[length] = '\0';
+            }
+        }
+
+        if (label[0] && normalizedPath[0] && system[0])
+            addPageItem(label, "Recent game", "html-games.png", ACTION_LAUNCH_ROM,
+                        normalizedPath, system);
+    }
+
+    fclose(file);
+}
+
+static void toggleFavorite(const PageItem *item)
+{
+    if (!item || item->action != ACTION_LAUNCH_ROM)
+        return;
+
+    FILE *in = fopen(FAVORITES_FILE, "r");
+    FILE *out = fopen(SYS_DIR "/config/onyx_favorites.tmp", "w");
+    bool removed = false;
+
+    if (!out)
+        return;
+
+    if (in) {
+        char line[640];
+        while (fgets(line, sizeof(line), in)) {
+            char original[640];
+            snprintf(original, sizeof(original), "%s", line);
+            trimLine(line);
+            char *path = strrchr(line, '\t');
+            if (path && strcmp(path + 1, item->target) == 0) {
+                removed = true;
+                continue;
+            }
+            fputs(original, out);
+        }
+        fclose(in);
+    }
+
+    if (!removed)
+        fprintf(out, "%s\t%s\t%s\t%s\n", item->aux, item->subtitle, item->title, item->target);
+
+    fclose(out);
+    remove(FAVORITES_FILE);
+    rename(SYS_DIR "/config/onyx_favorites.tmp", FAVORITES_FILE);
 }
 
 static void shellQuote(const char *value, char *out, size_t outSize)
@@ -660,10 +649,11 @@ static void addRomsForSystem(const char *systemName, const char *extList)
 
         char romPath[256];
         char displayName[96];
+        const char *iconFile;
         snprintf(romPath, sizeof(romPath), "%s/%s", romDir, entry->d_name);
         displayNameFromFile(entry->d_name, displayName, sizeof(displayName));
-        addPageItem(displayName, selectedSystemLabel, "html-games.png", ACTION_LAUNCH_ROM,
-                    romPath, systemName);
+        iconFile = isFavoritePath(romPath) ? "html-favorites.png" : "html-games.png";
+        addPageItem(displayName, selectedSystemLabel, iconFile, ACTION_LAUNCH_ROM, romPath, systemName);
     }
 
     closedir(dir);
@@ -685,16 +675,19 @@ static void loadPage(ViewMode view)
     }
 
     if (view == VIEW_FAVORITES) {
-        addPageItem("Open Onion Favorites", "Stock favorites list", "html-favorites.png", 2, NULL, NULL);
-        addPageItem("Pinned Games", "ONYX favorites coming next", "html-favorites.png", ACTION_NONE, NULL, NULL);
-        addPageItem("Collections", "Custom groups", "html-favorites.png", ACTION_NONE, NULL, NULL);
+        addFavoritesFromFile();
+        if (pageItemCount == 0)
+            addOnionJsonList(ONION_FAVORITES_FILE, VISIBLE_ROWS);
+        if (pageItemCount == 0)
+            addOnionJsonList(ONION_RECENTS_FILE, VISIBLE_ROWS);
+        if (pageItemCount == 0)
+            addPageItem("No favorites yet", "Press Y on a game", "html-favorites.png", ACTION_NONE, NULL, NULL);
         return;
     }
 
     if (view == VIEW_GAMES) {
-        addPageItem("Open Onion Games", "Stock system browser", "html-games.png", 3, NULL, NULL);
         addSystemsFromSd();
-        if (pageItemCount == 1)
+        if (pageItemCount == 0)
             addPageItem("No systems found", "Check /Roms and /Emu", "html-games.png", ACTION_NONE, NULL, NULL);
         return;
     }
@@ -707,16 +700,21 @@ static void loadPage(ViewMode view)
     }
 
     if (view == VIEW_APPS) {
-        addPageItem("Open Onion Apps", "Stock app list", "html-apps.png", 5, NULL, NULL);
         addAppsFromSd();
-        if (pageItemCount == 1)
+        if (pageItemCount == 0)
             addPageItem("No apps found", "Check /App", "html-apps.png", ACTION_NONE, NULL, NULL);
         return;
     }
 
+    if (view == VIEW_CONFIRM_DISABLE) {
+        addPageItem("Keep ONYX Enabled", "Return to Settings", "html-settings.png", ACTION_CANCEL_CONFIRM, NULL, NULL);
+        addPageItem("Disable ONYX", "Boot stock Onion next time", "html-settings.png", ACTION_CONFIRM_DISABLE_ONYX, NULL, NULL);
+        return;
+    }
+
     addPageItem("Open Onion Settings", "Stock settings menu", "html-settings.png", 0, NULL, NULL);
+    addPageItem("Disable ONYX", "Boot stock Onion next time", "html-settings.png", ACTION_DISABLE_ONYX, NULL, NULL);
     addPageItem("Interface", "Theme and launcher behavior", "html-settings.png", ACTION_NONE, NULL, NULL);
-    addPageItem("System", "Runtime and device tools", "html-settings.png", ACTION_NONE, NULL, NULL);
     addPageItem("About ONYX", "Custom launcher preview", "html-settings.png", ACTION_NONE, NULL, NULL);
 }
 
@@ -756,6 +754,15 @@ static TTF_Font *openFont(int size)
     return NULL;
 }
 
+static const char *backLabel(void)
+{
+    if (currentView == VIEW_HOME)
+        return "Menu";
+    if (currentView == VIEW_CONFIRM_DISABLE)
+        return "Cancel";
+    return "Back";
+}
+
 static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
                  TTF_Font *fontTitle, TTF_Font *fontRowTitle, TTF_Font *fontSubtitle)
 {
@@ -791,12 +798,18 @@ static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
         border(screen, 0, y, 640, ITEM_H, active ? teal : bg);
         icon(screen, pageItems[itemIndex].icon, 28, y + 16, ICON_SIZE);
         if (pageItems[itemIndex].subtitle[0]) {
-            text(screen, fontRowTitle, pageItems[itemIndex].title, 86, y + 8, textMain);
-            text(screen, fontSubtitle, pageItems[itemIndex].subtitle, 86, y + 43,
+            char title[80];
+            char subtitle[96];
+            truncateText(pageItems[itemIndex].title, title, sizeof(title), 32);
+            truncateText(pageItems[itemIndex].subtitle, subtitle, sizeof(subtitle), 42);
+            text(screen, fontRowTitle, title, 86, y + 8, textMain);
+            text(screen, fontSubtitle, subtitle, 86, y + 43,
                  active ? rgb(202, 209, 220) : textDim);
         }
         else {
-            text(screen, fontTitle, pageItems[itemIndex].title, 86, y + 17, textMain);
+            char title[80];
+            truncateText(pageItems[itemIndex].title, title, sizeof(title), 24);
+            text(screen, fontTitle, title, 86, y + 17, textMain);
         }
         icon(screen, "html-chev.png", 574, y + 16, ICON_SIZE);
     }
@@ -804,8 +817,10 @@ static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
     fillRot(screen, 320, 374, 2, 26, line);
     icon(screen, "html-btn-a.png", 66, 375, 30);
     text(screen, fontFooter, "Select", 102, 379, textDim);
+    if (currentView == VIEW_SYSTEM_ROMS || currentView == VIEW_FAVORITES)
+        text(screen, fontSubtitle, "Y Favorite", 265, 382, textDim);
     icon(screen, "html-btn-b.png", 480, 375, 30);
-    text(screen, fontFooter, "Back", 516, 379, textDim);
+    text(screen, fontFooter, backLabel(), 516, 379, textDim);
 
     SDL_Flip(screen);
 }
@@ -857,6 +872,12 @@ static void launchApp(const char *launchPath)
     runShellCommand(command);
 }
 
+static void disableOnyx(void)
+{
+    remove(SYS_DIR "/config/.useOnyxLauncher");
+    handoffToRuntime(0);
+}
+
 static void activateSelection(void)
 {
     if (pageItemCount <= 0)
@@ -881,6 +902,12 @@ static void activateSelection(void)
         launchRom(pageItems[selected].aux, pageItems[selected].target);
     else if (action == ACTION_LAUNCH_APP)
         launchApp(pageItems[selected].target);
+    else if (action == ACTION_DISABLE_ONYX)
+        loadPage(VIEW_CONFIRM_DISABLE);
+    else if (action == ACTION_CONFIRM_DISABLE_ONYX)
+        disableOnyx();
+    else if (action == ACTION_CANCEL_CONFIRM)
+        loadPage(VIEW_SETTINGS);
     else if (action >= 0)
         handoffToRuntime(action);
 }
@@ -951,17 +978,33 @@ int main(int argc, char *argv[])
             if (!quit)
                 draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
         }
-        else if (key == SW_BTN_B || key == SW_BTN_MENU) {
-            if (currentView == VIEW_HOME)
-                handoffToRuntime(0);
-            else if (currentView == VIEW_SYSTEM_ROMS) {
+        else if (key == SW_BTN_Y) {
+            if ((currentView == VIEW_SYSTEM_ROMS || currentView == VIEW_FAVORITES) &&
+                pageItemCount > 0 && pageItems[selected].action == ACTION_LAUNCH_ROM) {
+                toggleFavorite(&pageItems[selected]);
+                if (currentView == VIEW_SYSTEM_ROMS)
+                    loadPage(VIEW_SYSTEM_ROMS);
+                else
+                    loadPage(VIEW_FAVORITES);
+                draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
+            }
+        }
+        else if (key == SW_BTN_B) {
+            if (currentView == VIEW_SYSTEM_ROMS) {
                 loadPage(VIEW_GAMES);
                 draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
             }
-            else {
+            else if (currentView == VIEW_CONFIRM_DISABLE) {
+                loadPage(VIEW_SETTINGS);
+                draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
+            }
+            else if (currentView != VIEW_HOME) {
                 loadPage(VIEW_HOME);
                 draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
             }
+        }
+        else if (key == SW_BTN_MENU) {
+            handoffToRuntime(0);
         }
     }
 
