@@ -19,9 +19,9 @@
 #define PANEL_Y 24
 #define PANEL_W 640
 #define PANEL_H 392
-#define ITEM_H 73
+#define ITEM_H 78
 #define ITEM_GAP 0
-#define LIST_TOP 81
+#define LIST_TOP 62
 #define VISIBLE_ROWS 4
 #define MAX_PAGE_ITEMS 64
 #define SYS_DIR "/mnt/SDCARD/.tmp_update"
@@ -45,6 +45,7 @@
 #define ACTION_DISABLE_ONYX -23
 #define ACTION_CONFIRM_DISABLE_ONYX -24
 #define ACTION_CANCEL_CONFIRM -25
+#define ACTION_GAME_SWITCHER -26
 
 typedef enum {
     VIEW_HOME,
@@ -712,9 +713,9 @@ static void loadPage(ViewMode view)
         return;
     }
 
-    addPageItem("Open Onion Settings", "Stock settings menu", "html-settings.png", 0, NULL, NULL);
+    addPageItem("GameSwitcher", "Recent games and quick resume", "html-games.png", ACTION_GAME_SWITCHER, NULL, NULL);
+    addPageItem("Exit to Onion", "Open the stock main screen", "html-settings.png", 0, NULL, NULL);
     addPageItem("Disable ONYX", "Boot stock Onion next time", "html-settings.png", ACTION_DISABLE_ONYX, NULL, NULL);
-    addPageItem("Interface", "Theme and launcher behavior", "html-settings.png", ACTION_NONE, NULL, NULL);
     addPageItem("About ONYX", "Custom launcher preview", "html-settings.png", ACTION_NONE, NULL, NULL);
 }
 
@@ -796,22 +797,23 @@ static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
 
         fillRot(screen, 0, y, 640, ITEM_H, active ? blue : panel);
         border(screen, 0, y, 640, ITEM_H, active ? teal : bg);
-        icon(screen, pageItems[itemIndex].icon, 28, y + 16, ICON_SIZE);
+        int iconY = y + (ITEM_H - ICON_SIZE) / 2;
+        icon(screen, pageItems[itemIndex].icon, 28, iconY, ICON_SIZE);
         if (pageItems[itemIndex].subtitle[0]) {
             char title[80];
             char subtitle[96];
             truncateText(pageItems[itemIndex].title, title, sizeof(title), 32);
             truncateText(pageItems[itemIndex].subtitle, subtitle, sizeof(subtitle), 42);
-            text(screen, fontRowTitle, title, 86, y + 8, textMain);
-            text(screen, fontSubtitle, subtitle, 86, y + 43,
+            text(screen, fontRowTitle, title, 86, y + 10, textMain);
+            text(screen, fontSubtitle, subtitle, 86, y + 46,
                  active ? rgb(202, 209, 220) : textDim);
         }
         else {
             char title[80];
             truncateText(pageItems[itemIndex].title, title, sizeof(title), 24);
-            text(screen, fontTitle, title, 86, y + 17, textMain);
+            text(screen, fontTitle, title, 86, y + 19, textMain);
         }
-        icon(screen, "html-chev.png", 574, y + 16, ICON_SIZE);
+        icon(screen, "html-chev.png", 574, iconY, ICON_SIZE);
     }
 
     fillRot(screen, 320, 374, 2, 26, line);
@@ -872,6 +874,11 @@ static void launchApp(const char *launchPath)
     runShellCommand(command);
 }
 
+static void launchGameSwitcher(void)
+{
+    launchApp(APPS_DIR "/StartGameSwitcher/launch.sh");
+}
+
 static void disableOnyx(void)
 {
     remove(SYS_DIR "/config/.useOnyxLauncher");
@@ -902,6 +909,8 @@ static void activateSelection(void)
         launchRom(pageItems[selected].aux, pageItems[selected].target);
     else if (action == ACTION_LAUNCH_APP)
         launchApp(pageItems[selected].target);
+    else if (action == ACTION_GAME_SWITCHER)
+        launchGameSwitcher();
     else if (action == ACTION_DISABLE_ONYX)
         loadPage(VIEW_CONFIRM_DISABLE);
     else if (action == ACTION_CONFIRM_DISABLE_ONYX)
@@ -1004,7 +1013,7 @@ int main(int argc, char *argv[])
             }
         }
         else if (key == SW_BTN_MENU) {
-            handoffToRuntime(0);
+            launchGameSwitcher();
         }
     }
 
