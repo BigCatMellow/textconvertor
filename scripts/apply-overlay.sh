@@ -78,7 +78,7 @@ old_onyx = '''    # MainUI launch
             ./MainUI 2>&1 > /dev/null
     fi
 '''
-new = '''    # MainUI launch
+old_onyx_no_else = '''    # MainUI launch
     cd $miyoodir/app
     if [ -f "$sysdir/config/.useOnyxLauncher" ] && [ -x "$sysdir/bin/onyxLauncher" ]; then
         PATH="$miyoodir/app:$PATH" \\
@@ -92,9 +92,26 @@ new = '''    # MainUI launch
         LD_PRELOAD="$miyoodir/lib/libpadsp.so" \\
         ./MainUI 2>&1 > /dev/null
 '''
+new = '''    # MainUI launch
+    cd $miyoodir/app
+    # ONYX launcher hook
+    if [ -f "$sysdir/config/.useOnyxLauncher" ] && [ -x "$sysdir/bin/onyxLauncher" ]; then
+        PATH="$miyoodir/app:$PATH" \\
+            LD_LIBRARY_PATH="$miyoodir/lib:/config/lib:/lib" \\
+            LD_PRELOAD="$miyoodir/lib/libpadsp.so" \\
+            "$sysdir/bin/onyxLauncher" 2>&1 > /dev/null
+    else
+        PATH="$miyoodir/app:$PATH" \\
+            LD_LIBRARY_PATH="$miyoodir/lib:/config/lib:/lib" \\
+            LD_PRELOAD="$miyoodir/lib/libpadsp.so" \\
+            ./MainUI 2>&1 > /dev/null
+    fi
+'''
 if new not in runtime_text:
     if old_onyx in runtime_text:
         runtime_text = runtime_text.replace(old_onyx, new)
+    elif old_onyx_no_else in runtime_text:
+        runtime_text = runtime_text.replace(old_onyx_no_else, new)
     elif old in runtime_text:
         runtime_text = runtime_text.replace(old, new)
     else:

@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ONYX Current Build Preview</title>
+  <style>
+    @font-face {
+      font-family: "Saira Semi Condensed";
+      src: url("preview-assets/fonts/SairaSemiCondensed-Medium.ttf") format("truetype");
+      font-weight: 600;
+    }
+
+    @font-face {
+      font-family: "Rajdhani";
+      src: url("preview-assets/fonts/Rajdhani-Medium.ttf") format("truetype");
+      font-weight: 600;
+    }
+
+    :root {
+      --page-bg: #101317;
+      --screen-bg: #0e1114;
+      --status-bg: #111418;
+      --row-bg: #161c21;
+      --row-border: #0e1114;
+      --active-bg: #1c65db;
+      --active-border: #1c65db;
+      --line: #262b31;
+      --text-main: #eef2f6;
+      --text-dim: #9ca3ad;
+      --accent: #dd7600;
+      --ui-font: "Saira Semi Condensed", "Bahnschrift", system-ui, sans-serif;
+      --footer-size: 23px;
+      --title-size: 29px;
+      --row-title-size: 26px;
+      --subtitle-size: 16px;
+      --item-height: 88px;
+      --item-gap: 0px;
+      --icon-size: 38px;
+      --list-top: 62px;
+      --footer-band-y: 416px;
+      --footer-y: 432px;
+      --logo-x: 20px;
+      --logo-y: 17px;
+      --logo-w: 92px;
+      --logo-h: 21px;
+      --glyph-stroke: 1.55;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--page-bg);
+      color: var(--text-main);
+      font-family: Inter, "Segoe UI", system-ui, sans-serif;
+    }
+
+    .app {
+      width: min(1220px, calc(100vw - 32px));
+      margin: 24px auto;
+      display: grid;
+      grid-template-columns: minmax(640px, 640px) minmax(330px, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .topbar {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: end;
+    }
+
+    h1, h2 {
+      margin: 0;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    h1 { font-size: 24px; }
+    h2 { margin-bottom: 12px; font-size: 15px; color: #d7dde6; }
+    p { margin: 7px 0 0; color: var(--text-dim); font-size: 14px; line-height: 1.45; }
+
+    .screen {
+      position: relative;
+      width: 640px;
+      height: 480px;
+      overflow: hidden;
+      background: var(--screen-bg);
+      border: 2px solid var(--line);
+      box-shadow: 0 22px 70px rgba(0, 0, 0, 0.38);
+      font-family: var(--ui-font);
+    }
+
+    .surface {
+      position: absolute;
+      inset: 0;
+      background: var(--status-bg);
+    }
+
+    .headerLine {
+      position: absolute;
+      left: 0;
+      top: 60px;
+      width: 640px;
+      height: 2px;
+      background: var(--line);
+    }
+
+    .footerBand {
+      position: absolute;
+      left: 0;
+      top: var(--footer-band-y);
+      width: 640px;
+      height: calc(480px - var(--footer-band-y));
+      background: var(--status-bg);
+      border-top: 2px solid var(--line);
+    }
+
+    .brand {
+      position: absolute;
+      left: var(--logo-x);
+      top: var(--logo-y);
+      width: var(--logo-w);
+      height: var(--logo-h);
+    }
+
+    .brand img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .clock,
+    .battery {
+      position: absolute;
+      top: 15px;
+      font-size: var(--footer-size);
+      font-weight: 600;
+      color: var(--text-main);
+      line-height: 1;
+    }
+
+    .clock { left: 312px; }
+
+    .battery {
+      left: 520px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .batteryIcon {
+      width: 22px;
+      height: 12px;
+      border: 2px solid var(--text-dim);
+      position: relative;
+    }
+
+    .batteryIcon::before {
+      content: "";
+      position: absolute;
+      left: 3px;
+      top: 2px;
+      width: 11px;
+      height: 4px;
+      background: #9ed8df;
+    }
+
+    .batteryIcon::after {
+      content: "";
+      position: absolute;
+      right: -5px;
+      top: 2px;
+      width: 3px;
+      height: 5px;
+      background: var(--text-dim);
+    }
+
+    .list {
+      position: absolute;
+      left: 0;
+      top: var(--list-top);
+      width: 640px;
+      display: grid;
+      gap: var(--item-gap);
+    }
+
+    .row {
+      width: 640px;
+      height: var(--item-height);
+      display: grid;
+      grid-template-columns: 62px 1fr 54px;
+      align-items: center;
+      border: 2px solid var(--row-border);
+      background: var(--row-bg);
+      color: var(--text-main);
+      padding: 0 24px;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .row.active {
+      background: var(--active-bg);
+      border-color: var(--active-border);
+    }
+
+    .rowIcon,
+    .chevronIcon {
+      width: var(--icon-size);
+      height: var(--icon-size);
+      display: block;
+    }
+
+    .rowIcon svg,
+    .chevronIcon svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: var(--glyph-stroke);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .row.active .rowIcon,
+    .row.active .chevronIcon {
+      color: #ffffff;
+    }
+
+    .row:not(.active) .rowIcon,
+    .row:not(.active) .chevronIcon {
+      color: #dce3eb;
+    }
+
+    .rowCopy {
+      min-width: 0;
+      display: grid;
+      align-content: center;
+    }
+
+    .title {
+      font-size: var(--title-size);
+      font-weight: 600;
+      line-height: 1.16;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .row.hasSubtitle .title {
+      font-size: var(--row-title-size);
+      line-height: 1.08;
+    }
+
+    .subtitle {
+      margin-top: 5px;
+      font-size: var(--subtitle-size);
+      line-height: 1;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .row.active .subtitle { color: rgba(255,255,255,0.78); }
+
+    .chevron {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .footer {
+      position: absolute;
+      left: 0;
+      top: var(--footer-y);
+      width: 640px;
+      height: 30px;
+      font-size: var(--footer-size);
+      font-weight: 600;
+      color: var(--text-dim);
+    }
+
+    .footerDivider {
+      position: absolute;
+      left: 320px;
+      top: 2px;
+      width: 2px;
+      height: 26px;
+      background: var(--line);
+    }
+
+    .footerAction {
+      position: absolute;
+      top: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 30px;
+    }
+
+    .footerAction img {
+      width: 30px;
+      height: 30px;
+      display: block;
+    }
+
+    .btnGlyph {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #0c1116;
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .btnGlyph.a { background: #55d6c2; }
+    .btnGlyph.b { background: #ef7575; }
+
+    .footerAction.left { left: 66px; }
+    .footerAction.right { left: 480px; }
+    .footerAction.favorite { left: 265px; font-size: var(--subtitle-size); top: 3px; }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tabs button,
+    .panel button,
+    .panel select,
+    .panel textarea {
+      color: var(--text-main);
+      background: #151a20;
+      border: 1px solid rgba(255,255,255,0.16);
+      font: inherit;
+    }
+
+    .tabs button,
+    .panel button {
+      min-height: 34px;
+      padding: 0 11px;
+      cursor: pointer;
+    }
+
+    .tabs button.active {
+      background: var(--active-bg);
+      border-color: var(--active-border);
+    }
+
+    .side {
+      display: grid;
+      gap: 14px;
+    }
+
+    .panel {
+      background: rgba(18, 22, 27, 0.92);
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 16px;
+    }
+
+    .field {
+      display: grid;
+      grid-template-columns: 128px 1fr 58px;
+      gap: 12px;
+      align-items: center;
+      margin-top: 10px;
+      font-size: 13px;
+      color: #cbd2dc;
+    }
+
+    input[type="range"],
+    input[type="color"],
+    select {
+      width: 100%;
+    }
+
+    input[type="color"] {
+      height: 34px;
+      padding: 2px;
+      background: #151a20;
+      border: 1px solid rgba(255,255,255,0.16);
+    }
+
+    select { min-height: 34px; padding: 0 8px; }
+
+    textarea {
+      width: 100%;
+      min-height: 255px;
+      resize: vertical;
+      padding: 11px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 1040px) {
+      .app { grid-template-columns: 1fr; }
+      .screen { transform-origin: top left; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="topbar">
+      <div>
+        <h1>ONYX Current Build Preview</h1>
+        <p>Offline mirror of the current C launcher layout. Tune it here, then send me the config block.</p>
+      </div>
+      <div class="tabs" id="pageTabs"></div>
+    </div>
+
+    <section>
+      <div class="screen" id="screen">
+        <div class="surface"></div>
+        <div class="headerLine"></div>
+        <div class="footerBand"></div>
+        <div class="brand"><img src="preview-assets/icons/header-logo.png" alt="ONYX"></div>
+        <div class="clock">10:30</div>
+        <div class="battery"><span>83%</span><span class="batteryIcon"></span></div>
+        <div class="list" id="list"></div>
+        <div class="footer">
+          <span class="footerAction left"><span class="btnGlyph a">A</span><span>Select</span></span>
+          <span class="footerDivider"></span>
+          <span class="footerAction favorite" id="favoriteHint">Y Favorite</span>
+          <span class="footerAction right"><span class="btnGlyph b">B</span><span id="backText">Back</span></span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="panel">
+        <h2>Current Build Baseline</h2>
+        <p>This starts from package12 after the latest local v2 changes: white PNG icons, normal arrow, bottom footer band, and full 640x480 surface.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Typography And Layout</h2>
+        <label class="field">
+          <span>Font</span>
+          <select id="fontFamily">
+            <option value='"Saira Semi Condensed", "Bahnschrift", system-ui, sans-serif'>Saira Semi Condensed</option>
+            <option value='Rajdhani, "Bahnschrift", system-ui, sans-serif'>Rajdhani</option>
+            <option value='"Bahnschrift", "Segoe UI", system-ui, sans-serif'>Bahnschrift</option>
+            <option value='Inter, "Segoe UI", system-ui, sans-serif'>Inter</option>
+          </select>
+          <output></output>
+        </label>
+        <label class="field"><span>Title size</span><input id="titleSize" type="range" min="18" max="36" value="29"><output></output></label>
+        <label class="field"><span>Row title</span><input id="rowTitleSize" type="range" min="18" max="32" value="26"><output></output></label>
+        <label class="field"><span>Subtitle</span><input id="subtitleSize" type="range" min="10" max="22" value="16"><output></output></label>
+        <label class="field"><span>Footer size</span><input id="footerSize" type="range" min="12" max="28" value="23"><output></output></label>
+        <label class="field"><span>Item height</span><input id="itemHeight" type="range" min="58" max="96" value="88"><output></output></label>
+        <label class="field"><span>Icon size</span><input id="iconSize" type="range" min="28" max="54" value="38"><output></output></label>
+        <label class="field"><span>Icon stroke</span><input id="glyphStroke" type="range" min="1" max="2.5" step="0.05" value="1.55"><output></output></label>
+        <label class="field"><span>List top</span><input id="listTop" type="range" min="54" max="96" value="62"><output></output></label>
+        <label class="field"><span>Footer band</span><input id="footerBandY" type="range" min="392" max="430" value="416"><output></output></label>
+        <label class="field"><span>Footer y</span><input id="footerY" type="range" min="418" max="448" value="432"><output></output></label>
+        <label class="field"><span>Logo width</span><input id="logoW" type="range" min="42" max="110" value="92"><output></output></label>
+      </section>
+
+      <section class="panel">
+        <h2>Colors</h2>
+        <label class="field"><span>Screen bg</span><input id="screenBg" type="color" value="#0e1114"><output></output></label>
+        <label class="field"><span>Status bg</span><input id="statusBg" type="color" value="#111418"><output></output></label>
+        <label class="field"><span>Row bg</span><input id="rowBg" type="color" value="#161c21"><output></output></label>
+        <label class="field"><span>Row border</span><input id="rowBorder" type="color" value="#0e1114"><output></output></label>
+        <label class="field"><span>Active fill</span><input id="activeBg" type="color" value="#1c65db"><output></output></label>
+        <label class="field"><span>Active border</span><input id="activeBorder" type="color" value="#1c65db"><output></output></label>
+        <label class="field"><span>Line</span><input id="line" type="color" value="#262b31"><output></output></label>
+        <label class="field"><span>Main text</span><input id="textMain" type="color" value="#eef2f6"><output></output></label>
+        <label class="field"><span>Dim text</span><input id="textDim" type="color" value="#9ca3ad"><output></output></label>
+        <label class="field"><span>Accent</span><input id="accent" type="color" value="#dd7600"><output></output></label>
+      </section>
+
+      <section class="panel">
+        <h2>Paste This Back To Me</h2>
+        <textarea id="config" spellcheck="false"></textarea>
+        <div class="actions">
+          <button id="copyConfig" type="button">Copy config</button>
+          <button id="resetConfig" type="button">Reset to package12</button>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <script>
+    const baseline = {
+      fontFamily: "\"Saira Semi Condensed\", \"Bahnschrift\", system-ui, sans-serif",
+      titleSize: 29,
+      rowTitleSize: 26,
+      subtitleSize: 16,
+      footerSize: 23,
+      itemHeight: 88,
+      iconSize: 38,
+      glyphStroke: 1.55,
+      listTop: 62,
+      footerBandY: 416,
+      footerY: 432,
+      logoW: 92,
+      screenBg: "#0e1114",
+      statusBg: "#111418",
+      rowBg: "#161c21",
+      rowBorder: "#0e1114",
+      activeBg: "#1c65db",
+      activeBorder: "#1c65db",
+      line: "#262b31",
+      textMain: "#eef2f6",
+      textDim: "#9ca3ad",
+      accent: "#dd7600"
+    };
+
+    const pages = {
+      Home: [
+        ["star", "Favorites", "Pinned games and apps"],
+        ["gamepad", "Games", "Browse by system"],
+        ["grid", "Apps", "Tools and utilities"],
+        ["settings", "Settings", "System configuration"]
+      ],
+      Favorites: [
+        ["file", "Pokemon Emerald", "Game Boy Advance"],
+        ["file", "Chrono Trigger", "Super Nintendo"],
+        ["file", "Sonic 2", "Mega Drive"],
+        ["clock", "RetroArch", "App"]
+      ],
+      Games: [
+        ["arcade", "Arcade", "312 games"],
+        ["handheld", "Game Boy Advance", "247 games"],
+        ["console", "Mega Drive", "89 games"],
+        ["console", "Super Nintendo", "156 games"]
+      ],
+      Apps: [
+        ["clock", "RetroArch", "Frontend"],
+        ["grid", "PortMaster", "Ports and tools"],
+        ["folder", "File Manager", "Browse files"],
+        ["music", "Music Player", "Audio"]
+      ],
+      Settings: [
+        ["settings", "Tweaks", "System behavior and tools"],
+        ["settings", "UI Theme", "Browse and apply themes"],
+        ["grid", "Package Manager", "Add Onion apps and systems"],
+        ["clock", "Activity Tracker", "Play time and history"],
+        ["clock", "GameSwitcher", "Recent games and quick resume"],
+        ["settings", "Stock Onion", "Open the original main screen once"],
+        ["settings", "ONYX launcher", "Toggle back to stock Onion"],
+        ["info", "Version", "0.3"]
+      ]
+    };
+
+    const ICONS = {
+      star: '<svg viewBox="0 0 24 24"><path d="M12 3.5l2.5 5.1 5.6.8-4 3.9.9 5.5-5-2.6-5 2.6.9-5.5-4-3.9 5.6-.8z"/></svg>',
+      gamepad: '<svg viewBox="0 0 24 24"><path d="M7.4 7.8h9.2c2 0 3.7 1.4 4.1 3.4l.7 3.7c.3 1.7-1 3.3-2.7 3.3-.8 0-1.5-.3-2-.9l-1.4-1.6H8.7l-1.4 1.6c-.5.6-1.2.9-2 .9-1.7 0-3-1.6-2.7-3.3l.7-3.7c.4-2 2.1-3.4 4.1-3.4z"/><path d="M6.6 12.8h4M8.6 10.8v4"/><circle cx="15.7" cy="12" r="1.05" fill="currentColor" stroke="none"/><circle cx="18" cy="14.1" r="1.05" fill="currentColor" stroke="none"/></svg>',
+      grid: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>',
+      settings: '<svg viewBox="0 0 24 24"><path d="M10.7 3.3h2.6l.6 2.2c.5.2 1 .4 1.4.8l2-.9 1.8 1.8-.9 2c.3.5.6.9.8 1.4l2.2.6v2.6l-2.2.6c-.2.5-.4 1-.8 1.4l.9 2-1.8 1.8-2-.9c-.5.3-.9.6-1.4.8l-.6 2.2h-2.6l-.6-2.2c-.5-.2-1-.4-1.4-.8l-2 .9-1.8-1.8.9-2c-.3-.5-.6-.9-.8-1.4l-2.2-.6v-2.6l2.2-.6c.2-.5.4-1 .8-1.4l-.9-2 1.8-1.8 2 .9c.5-.3.9-.6 1.4-.8z"/><circle cx="12" cy="12" r="3.3"/></svg>',
+      file: '<svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v4h4M9 11h6M9 15h5"/></svg>',
+      clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/></svg>',
+      arcade: '<svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M7 7h10v5H7zM9 16h6"/><circle cx="12" cy="19" r=".5" fill="currentColor" stroke="none"/></svg>',
+      handheld: '<svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M9 7h6v7H9zM10 17h4"/></svg>',
+      console: '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="11" rx="2"/><path d="M7 12h3M16 11v2M14 12h4"/></svg>',
+      folder: '<svg viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+      music: '<svg viewBox="0 0 24 24"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>',
+      info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg>',
+      chevron: '<svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M10 8l4 4-4 4"/></svg>',
+      chevronActive: '<svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="3" fill="currentColor" stroke="none"/><path d="M10 8l4 4-4 4" stroke="#1c65db"/></svg>'
+    };
+
+    const controls = Object.keys(baseline);
+    let pageName = "Home";
+    let selected = 0;
+
+    function renderTabs() {
+      const tabs = document.getElementById("pageTabs");
+      tabs.innerHTML = "";
+      for (const name of Object.keys(pages)) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = name;
+        button.className = name === pageName ? "active" : "";
+        button.addEventListener("click", () => {
+          pageName = name;
+          selected = 0;
+          renderTabs();
+          renderRows();
+        });
+        tabs.append(button);
+      }
+    }
+
+    function renderRows() {
+      const list = document.getElementById("list");
+      list.innerHTML = "";
+      pages[pageName].forEach((rowData, index) => {
+        const [icon, title, subtitle] = rowData;
+        const active = index === selected;
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "row hasSubtitle" + (active ? " active" : "");
+        row.addEventListener("click", () => {
+          selected = index;
+          renderRows();
+        });
+        row.innerHTML = `
+          <span class="rowIcon">${ICONS[icon] || ICONS.file}</span>
+          <span class="rowCopy"><span class="title">${title}</span><span class="subtitle">${subtitle}</span></span>
+          <span class="chevron"><span class="chevronIcon">${active ? ICONS.chevronActive : ICONS.chevron}</span></span>
+        `;
+        list.append(row);
+      });
+      document.getElementById("favoriteHint").style.display =
+        pageName === "Favorites" || pageName === "Games" ? "flex" : "none";
+      document.getElementById("backText").textContent = pageName === "Home" ? "Back" : "Back";
+    }
+
+    function getConfig() {
+      const config = {};
+      for (const id of controls) {
+        const el = document.getElementById(id);
+        config[id] = el.type === "range" ? Number(el.value) : el.value;
+      }
+      return config;
+    }
+
+    function applyConfig() {
+      const c = getConfig();
+      const root = document.documentElement;
+      root.style.setProperty("--ui-font", c.fontFamily);
+      root.style.setProperty("--title-size", c.titleSize + "px");
+      root.style.setProperty("--row-title-size", c.rowTitleSize + "px");
+      root.style.setProperty("--subtitle-size", c.subtitleSize + "px");
+      root.style.setProperty("--footer-size", c.footerSize + "px");
+      root.style.setProperty("--item-height", c.itemHeight + "px");
+      root.style.setProperty("--icon-size", c.iconSize + "px");
+      root.style.setProperty("--glyph-stroke", c.glyphStroke);
+      root.style.setProperty("--list-top", c.listTop + "px");
+      root.style.setProperty("--footer-band-y", c.footerBandY + "px");
+      root.style.setProperty("--footer-y", c.footerY + "px");
+      root.style.setProperty("--logo-w", c.logoW + "px");
+      root.style.setProperty("--logo-h", Math.round(c.logoW * 21 / 64) + "px");
+      root.style.setProperty("--screen-bg", c.screenBg);
+      root.style.setProperty("--status-bg", c.statusBg);
+      root.style.setProperty("--row-bg", c.rowBg);
+      root.style.setProperty("--row-border", c.rowBorder);
+      root.style.setProperty("--active-bg", c.activeBg);
+      root.style.setProperty("--active-border", c.activeBorder);
+      root.style.setProperty("--line", c.line);
+      root.style.setProperty("--text-main", c.textMain);
+      root.style.setProperty("--text-dim", c.textDim);
+      root.style.setProperty("--accent", c.accent);
+
+      for (const id of controls) {
+        const el = document.getElementById(id);
+        const output = el.closest(".field")?.querySelector("output");
+        if (output) output.textContent = el.type === "color" ? el.value : (el.type === "range" ? el.value : "");
+      }
+
+      const payload = {
+        ...c,
+        itemGap: 0,
+        selectedIconStyle: "regular outline glyph",
+        arrowIcon: "rounded-square chevron glyph",
+        footerButtons: "CSS A/B circles",
+        menuItems: ["Favorites", "Games", "Apps", "Settings"]
+      };
+      document.getElementById("config").value = "ONYX_UI_CONFIG\n" + JSON.stringify(payload, null, 2);
+    }
+
+    function setConfig(config) {
+      for (const [key, value] of Object.entries(config)) {
+        const el = document.getElementById(key);
+        if (el) el.value = value;
+      }
+      applyConfig();
+    }
+
+    for (const id of controls) {
+      document.getElementById(id).addEventListener("input", applyConfig);
+    }
+
+    document.getElementById("resetConfig").addEventListener("click", () => setConfig(baseline));
+    document.getElementById("copyConfig").addEventListener("click", async () => {
+      await navigator.clipboard.writeText(document.getElementById("config").value);
+    });
+
+    setConfig(baseline);
+    renderTabs();
+    renderRows();
+  </script>
+</body>
+</html>

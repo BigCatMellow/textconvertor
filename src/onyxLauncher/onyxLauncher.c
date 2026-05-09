@@ -1,6 +1,7 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
 #include <SDL/SDL_ttf.h>
+#include <ctype.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <linux/input.h>
@@ -23,12 +24,13 @@
 #define PANEL_Y 0
 #define PANEL_W 640
 #define PANEL_H 480
-#define ITEM_H 73
+#define ITEM_H 88
 #define ITEM_GAP 0
-#define LIST_TOP 81
+#define LIST_TOP 62
 #define VISIBLE_ROWS 4
 #define MAX_HW_INPUTS 8
 #define MAX_PAGE_ITEMS 64
+#define ONYX_VERSION "0.3"
 #define SYS_DIR "/mnt/SDCARD/.tmp_update"
 #define MIYOO_APP_DIR "/mnt/SDCARD/miyoo/app"
 #define ICON_DIR SYS_DIR "/res/onyx/icons"
@@ -51,6 +53,8 @@
 #define ACTION_CONFIRM_DISABLE_ONYX -24
 #define ACTION_CANCEL_CONFIRM -25
 #define ACTION_GAME_SWITCHER -26
+#define ACTION_STOCK_MAIN -27
+#define ACTION_LAUNCH_COMMAND -28
 
 typedef enum {
     VIEW_HOME,
@@ -91,6 +95,33 @@ static char selectedSystem[64] = "";
 static char selectedSystemLabel[96] = "";
 static char selectedSystemExts[128] = "";
 static char pendingCommand[760] = "";
+
+static int compareText(const char *a, const char *b)
+{
+    while (*a && *b) {
+        int ca = tolower((unsigned char)*a);
+        int cb = tolower((unsigned char)*b);
+        if (ca != cb)
+            return ca - cb;
+        a++;
+        b++;
+    }
+
+    return tolower((unsigned char)*a) - tolower((unsigned char)*b);
+}
+
+static int comparePageItems(const void *left, const void *right)
+{
+    const PageItem *a = (const PageItem *)left;
+    const PageItem *b = (const PageItem *)right;
+    return compareText(a->title, b->title);
+}
+
+static void sortPageItems(void)
+{
+    if (pageItemCount > 1)
+        qsort(pageItems, pageItemCount, sizeof(PageItem), comparePageItems);
+}
 
 static void sigHandler(int sig)
 {
@@ -490,7 +521,7 @@ static void addFavoritesFromFile(void)
         char *title = strtok(NULL, "\t");
         char *path = strtok(NULL, "\t");
         if (system && label && title && path)
-            addPageItem(title, label, "favorites-white.png", ACTION_LAUNCH_ROM, path, system);
+            addPageItem(title, label, "outline-file.png", ACTION_LAUNCH_ROM, path, system);
     }
 
     fclose(file);
@@ -529,7 +560,7 @@ static void addOnionJsonList(const char *path, int limit)
         }
 
         if (label[0] && normalizedPath[0] && system[0])
-            addPageItem(label, "Recent game", "games-white.png", ACTION_LAUNCH_ROM,
+            addPageItem(label, "Recent game", "outline-file.png", ACTION_LAUNCH_ROM,
                         normalizedPath, system);
     }
 
@@ -540,6 +571,8 @@ static void toggleFavorite(const PageItem *item)
 {
     if (!item || item->action != ACTION_LAUNCH_ROM)
         return;
+
+    mkdir(SYS_DIR "/config", 0755);
 
     FILE *in = fopen(FAVORITES_FILE, "r");
     FILE *out = fopen(SYS_DIR "/config/onyx_favorites.tmp", "w");
@@ -593,6 +626,23 @@ static void shellQuote(const char *value, char *out, size_t outSize)
     out[pos] = '\0';
 }
 
+static void doubleQuote(const char *value, char *out, size_t outSize)
+{
+    size_t pos = 0;
+    if (outSize == 0)
+        return;
+
+    out[pos++] = '"';
+    for (const char *p = value; *p && pos + 3 < outSize; p++) {
+        if (*p == '"' || *p == '\\' || *p == '$' || *p == '`')
+            out[pos++] = '\\';
+        out[pos++] = *p;
+    }
+    if (pos + 1 < outSize)
+        out[pos++] = '"';
+    out[pos] = '\0';
+}
+
 static void addSystemsFromSd(void)
 {
     DIR *dir = opendir(ROMS_DIR);
@@ -619,12 +669,13 @@ static void addSystemsFromSd(void)
         configValue(configPath, "extlist", extList, sizeof(extList));
         romCount = countRomsForSystem(entry->d_name, extList);
         snprintf(subtitle, sizeof(subtitle), "%d %s", romCount, romCount == 1 ? "game" : "games");
-        const char *glyph = "games-white.png";
+        const char *glyph = "outline-gamepad.png";
         addPageItem(label[0] ? label : entry->d_name, subtitle, glyph,
                     ACTION_OPEN_SYSTEM, entry->d_name, extList);
     }
 
     closedir(dir);
+    sortPageItems();
 }
 
 static void addAppsFromSd(void)
@@ -651,13 +702,14 @@ static void addAppsFromSd(void)
 
         configValue(configPath, "label", label, sizeof(label));
         configValue(configPath, "description", description, sizeof(description));
-        const char *glyph = "apps-white.png";
+        const char *glyph = "outline-grid.png";
         addPageItem(label[0] ? label : entry->d_name,
                     description[0] ? description : "App",
                     glyph, ACTION_LAUNCH_APP, launchPath, NULL);
     }
 
     closedir(dir);
+    sortPageItems();
 }
 
 static void addRomsForSystem(const char *systemName, const char *extList)
@@ -679,11 +731,12 @@ static void addRomsForSystem(const char *systemName, const char *extList)
         const char *iconFile;
         snprintf(romPath, sizeof(romPath), "%s/%s", romDir, entry->d_name);
         displayNameFromFile(entry->d_name, displayName, sizeof(displayName));
-        iconFile = isFavoritePath(romPath) ? "favorites-white.png" : "games-white.png";
+        iconFile = "outline-file.png";
         addPageItem(displayName, selectedSystemLabel, iconFile, ACTION_LAUNCH_ROM, romPath, systemName);
     }
 
     closedir(dir);
+    sortPageItems();
 }
 
 static void loadPage(ViewMode view)
@@ -694,13 +747,13 @@ static void loadPage(ViewMode view)
     scrollOffset = 0;
 
     if (view == VIEW_HOME) {
-        addPageItem("Favorites", "Pinned games and apps", "favorites-white.png",
+        addPageItem("Favorites", "Pinned games and apps", "outline-star.png",
                     ACTION_HOME_FAVORITES, NULL, NULL);
-        addPageItem("Games", "Browse by system", "games-white.png",
+        addPageItem("Games", "Browse by system", "outline-gamepad.png",
                     ACTION_HOME_GAMES, NULL, NULL);
-        addPageItem("Apps", "Tools and utilities", "apps-white.png",
+        addPageItem("Apps", "Tools and utilities", "outline-grid.png",
                     ACTION_HOME_APPS, NULL, NULL);
-        addPageItem("Settings", "System configuration", "settings-white.png",
+        addPageItem("Settings", "System configuration", "outline-settings.png",
                     ACTION_HOME_SETTINGS, NULL, NULL);
         return;
     }
@@ -708,12 +761,12 @@ static void loadPage(ViewMode view)
     if (view == VIEW_FAVORITES) {
         addFavoritesFromFile();
         if (pageItemCount == 0)
-            addOnionJsonList(ONION_FAVORITES_FILE, VISIBLE_ROWS);
+            addOnionJsonList(ONION_FAVORITES_FILE, MAX_PAGE_ITEMS);
         if (pageItemCount == 0)
-            addOnionJsonList(ONION_RECENTS_FILE, VISIBLE_ROWS);
+            addOnionJsonList(ONION_RECENTS_FILE, MAX_PAGE_ITEMS);
         if (pageItemCount == 0)
             addPageItemEx("No favorites yet", "Press Y on a game to pin it here",
-                          "favorites-white.png", ACTION_NONE, NULL, NULL, ROW_STATIC, NULL, false);
+                          "outline-star.png", ACTION_NONE, NULL, NULL, ROW_STATIC, NULL, false);
         return;
     }
 
@@ -721,14 +774,14 @@ static void loadPage(ViewMode view)
         addSystemsFromSd();
         if (pageItemCount == 0)
             addPageItemEx("No systems found", "Check /Roms and /Emu",
-                          "games-white.png", ACTION_NONE, NULL, NULL, ROW_STATIC, NULL, false);
+                          "outline-gamepad.png", ACTION_NONE, NULL, NULL, ROW_STATIC, NULL, false);
         return;
     }
 
     if (view == VIEW_SYSTEM_ROMS) {
         addRomsForSystem(selectedSystem, selectedSystemExts);
         if (pageItemCount == 0)
-            addPageItemEx("No games found", selectedSystemLabel, "games-white.png",
+            addPageItemEx("No games found", selectedSystemLabel, "outline-file.png",
                           ACTION_NONE, NULL, NULL, ROW_STATIC, NULL, false);
         return;
     }
@@ -736,23 +789,32 @@ static void loadPage(ViewMode view)
     if (view == VIEW_APPS) {
         addAppsFromSd();
         if (pageItemCount == 0)
-            addPageItemEx("No apps found", "Check /App", "apps-white.png",
+            addPageItemEx("No apps found", "Check /App", "outline-grid.png",
                           ACTION_NONE, NULL, NULL, ROW_STATIC, NULL, false);
         return;
     }
 
     if (view == VIEW_CONFIRM_DISABLE) {
-        addPageItem("Keep ONYX Enabled", "Return to Settings", "settings-white.png", ACTION_CANCEL_CONFIRM, NULL, NULL);
-        addPageItem("Disable ONYX", "Boot stock Onion next time", "settings-white.png", ACTION_CONFIRM_DISABLE_ONYX, NULL, NULL);
+        addPageItem("Keep ONYX Enabled", "Return to Settings", "outline-settings.png", ACTION_CANCEL_CONFIRM, NULL, NULL);
+        addPageItem("Disable ONYX", "Boot stock Onion next time", "outline-settings.png", ACTION_CONFIRM_DISABLE_ONYX, NULL, NULL);
         return;
     }
 
-    addPageItem("GameSwitcher", "Recent games and quick resume", "games-white.png", ACTION_GAME_SWITCHER, NULL, NULL);
-    addPageItem("Exit to Onion", "Open the stock main screen", "settings-white.png", 0, NULL, NULL);
-    addPageItemEx("ONYX launcher", "Toggle back to stock Onion", "settings-white.png",
+    addPageItem("Tweaks", "System behavior and tools", "outline-settings.png",
+                ACTION_LAUNCH_COMMAND, "cd " SYS_DIR "; ./bin/tweaks", NULL);
+    addPageItem("UI Theme", "Browse and apply themes", "outline-settings.png",
+                ACTION_LAUNCH_COMMAND, "cd " SYS_DIR "; ./bin/themeSwitcher", NULL);
+    addPageItem("Package Manager", "Add Onion apps and systems", "outline-grid.png",
+                ACTION_LAUNCH_COMMAND, SYS_DIR "/bin/packageManager", NULL);
+    addPageItem("Activity Tracker", "Play time and history", "outline-clock.png",
+                ACTION_LAUNCH_COMMAND, "cd " SYS_DIR "; ./bin/playActivityUI", NULL);
+    addPageItem("GameSwitcher", "Recent games and quick resume", "outline-clock.png", ACTION_GAME_SWITCHER, NULL, NULL);
+    addPageItem("Stock Onion", "Open the original main screen once", "outline-settings.png",
+                ACTION_STOCK_MAIN, NULL, NULL);
+    addPageItemEx("ONYX launcher", "Toggle back to stock Onion", "outline-settings.png",
                   ACTION_DISABLE_ONYX, NULL, NULL, ROW_TOGGLE, NULL, true);
-    addPageItemEx("Version", "Local development build", "settings-white.png",
-                  ACTION_NONE, NULL, NULL, ROW_VALUE, "0.2", false);
+    addPageItemEx("Version", "Local development build", "outline-settings.png",
+                  ACTION_NONE, NULL, NULL, ROW_VALUE, ONYX_VERSION, false);
 }
 
 static void moveSelection(int delta)
@@ -822,18 +884,19 @@ static void drawRowAccessory(SDL_Surface *screen, const PageItem *item, TTF_Font
     if (item->kind == ROW_VALUE) {
         char value[48];
         truncateText(item->value, value, sizeof(value), 16);
-        text(screen, fontFooter, value, 492, y + 25, active ? textMain : textDim);
+        text(screen, fontFooter, value, 492, y + 31, active ? textMain : textDim);
         return;
     }
 
     if (item->kind == ROW_TOGGLE) {
-        drawToggle(screen, 532, y + 25, item->enabled, rgb(221, 118, 0),
+        drawToggle(screen, 532, y + 30, item->enabled, rgb(221, 118, 0),
                    rgb(42, 47, 54), textMain);
         return;
     }
 
     if (item->kind == ROW_DRILL)
-        icon(screen, "square-rounded-arrow-right.png", 574, iconY, ICON_SIZE);
+        icon(screen, active ? "outline-chevron-filled.png" : "outline-chevron.png",
+             574, iconY, ICON_SIZE);
 }
 
 static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
@@ -857,7 +920,7 @@ static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
     fillRot(screen, 0, 416, 640, 64, panelDark);
     fillRot(screen, 0, 416, 640, 2, line);
 
-    image(screen, "onyx-logo-header.png", 20, 17);
+    image(screen, "header-logo.png", 20, 17);
     text(screen, fontFooter, "10:30", 312, 15, textMain);
     text(screen, fontFooter, "83%", 520, 15, textMain);
     border(screen, 574, 18, 22, 12, textDim);
@@ -885,14 +948,14 @@ static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
                 char subtitle[96];
                 truncateText(pageItems[itemIndex].title, title, sizeof(title), 32);
                 truncateText(pageItems[itemIndex].subtitle, subtitle, sizeof(subtitle), 42);
-                text(screen, fontRowTitle, title, 86, y + 8, textMain);
-                text(screen, fontSubtitle, subtitle, 86, y + 43,
+                text(screen, fontRowTitle, title, 86, y + 18, textMain);
+                text(screen, fontSubtitle, subtitle, 86, y + 52,
                      active ? rgb(202, 209, 220) : textDim);
             }
             else {
                 char title[80];
                 truncateText(pageItems[itemIndex].title, title, sizeof(title), 24);
-                text(screen, fontTitle, title, 86, y + 17, textMain);
+                text(screen, fontTitle, title, 86, y + 27, textMain);
             }
             drawRowAccessory(screen, &pageItems[itemIndex], fontFooter, y, iconY,
                              active, textMain, textDim);
@@ -900,12 +963,12 @@ static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
     }
 
     fillRot(screen, 320, 432, 2, 26, line);
-    icon(screen, "button-a.png", 66, 430, 30);
-    text(screen, fontFooter, "Select", 102, 429, textDim);
+    icon(screen, "button-a.png", 66, 432, 30);
+    text(screen, fontFooter, "Select", 102, 431, textDim);
     if (currentView == VIEW_SYSTEM_ROMS || currentView == VIEW_FAVORITES)
-        text(screen, fontSubtitle, "Y Favorite", 265, 432, textDim);
-    icon(screen, "button-b.png", 480, 430, 30);
-    text(screen, fontFooter, backLabel(), 516, 429, textDim);
+        text(screen, fontSubtitle, "Y Favorite", 265, 434, textDim);
+    icon(screen, "button-b.png", 480, 432, 30);
+    text(screen, fontFooter, backLabel(), 516, 431, textDim);
 
     SDL_Flip(screen);
 }
@@ -918,9 +981,23 @@ static void handoffToRuntime(int state)
     quit = true;
 }
 
-static void runShellCommand(const char *command)
+static void runDirectCommand(const char *command)
 {
     snprintf(pendingCommand, sizeof(pendingCommand), "%s", command);
+    quit = true;
+}
+
+static void queueRuntimeCommand(const char *command)
+{
+    FILE *file = fopen("/tmp/cmd_to_run.sh", "w");
+    if (!file) {
+        runDirectCommand(command);
+        return;
+    }
+
+    fprintf(file, "%s\n", command);
+    fclose(file);
+    chmod("/tmp/cmd_to_run.sh", 0755);
     quit = true;
 }
 
@@ -932,10 +1009,10 @@ static void launchRom(const char *systemName, const char *romPath)
     char command[760];
 
     snprintf(launchPath, sizeof(launchPath), EMU_DIR "/%s/launch.sh", systemName);
-    shellQuote(launchPath, quotedLaunch, sizeof(quotedLaunch));
-    shellQuote(romPath, quotedRom, sizeof(quotedRom));
+    doubleQuote(launchPath, quotedLaunch, sizeof(quotedLaunch));
+    doubleQuote(romPath, quotedRom, sizeof(quotedRom));
     snprintf(command, sizeof(command), "%s %s", quotedLaunch, quotedRom);
-    runShellCommand(command);
+    queueRuntimeCommand(command);
 }
 
 static void launchApp(const char *launchPath)
@@ -951,17 +1028,38 @@ static void launchApp(const char *launchPath)
     if (slash)
         *slash = '\0';
 
-    shellQuote(appDir, quotedDir, sizeof(quotedDir));
-    shellQuote(launchPath, quotedLaunch, sizeof(quotedLaunch));
-    snprintf(command, sizeof(command), "cd %s && %s", quotedDir, quotedLaunch);
-    runShellCommand(command);
+    doubleQuote(appDir, quotedDir, sizeof(quotedDir));
+    doubleQuote(launchPath, quotedLaunch, sizeof(quotedLaunch));
+    snprintf(command, sizeof(command), "cd %s; %s", quotedDir, quotedLaunch);
+    queueRuntimeCommand(command);
+}
+
+static void launchCommand(const char *command)
+{
+    if (command && command[0])
+        queueRuntimeCommand(command);
 }
 
 static void launchGameSwitcher(void)
 {
-    runShellCommand("cd " SYS_DIR " && touch .runGameSwitcher && "
-                    "LD_PRELOAD=/mnt/SDCARD/miyoo/lib/libpadsp.so gameSwitcher; "
-                    "rm -f .runGameSwitcher");
+    FILE *file = fopen(SYS_DIR "/.runGameSwitcher", "w");
+    if (file) {
+        fclose(file);
+    }
+    else {
+        queueRuntimeCommand("cd " SYS_DIR "; LD_PRELOAD=/mnt/SDCARD/miyoo/lib/libpadsp.so gameSwitcher");
+        return;
+    }
+    quit = true;
+}
+
+static void launchStockMain(void)
+{
+    runDirectCommand("cd " MIYOO_APP_DIR " && "
+                     "PATH=" MIYOO_APP_DIR ":$PATH "
+                     "LD_LIBRARY_PATH=/mnt/SDCARD/miyoo/lib:/config/lib:/lib "
+                     "LD_PRELOAD=/mnt/SDCARD/miyoo/lib/libpadsp.so "
+                     "./MainUI 2>&1 > /dev/null");
 }
 
 static void disableOnyx(void)
@@ -994,8 +1092,12 @@ static void activateSelection(void)
         launchRom(pageItems[selected].aux, pageItems[selected].target);
     else if (action == ACTION_LAUNCH_APP)
         launchApp(pageItems[selected].target);
+    else if (action == ACTION_LAUNCH_COMMAND)
+        launchCommand(pageItems[selected].target);
     else if (action == ACTION_GAME_SWITCHER)
         launchGameSwitcher();
+    else if (action == ACTION_STOCK_MAIN)
+        launchStockMain();
     else if (action == ACTION_DISABLE_ONYX)
         loadPage(VIEW_CONFIRM_DISABLE);
     else if (action == ACTION_CONFIRM_DISABLE_ONYX)
@@ -1022,9 +1124,9 @@ int main(int argc, char *argv[])
     }
 
     SDL_Surface *screen = SDL_SetVideoMode(SCREEN_W, SCREEN_H, 32, SDL_SWSURFACE);
-    TTF_Font *fontFooter = openFont(20);
+    TTF_Font *fontFooter = openFont(23);
     TTF_Font *fontBrand = openFont(17);
-    TTF_Font *fontTitle = openFont(30);
+    TTF_Font *fontTitle = openFont(29);
     TTF_Font *fontRowTitle = openFont(26);
     TTF_Font *fontSubtitle = openFont(16);
 
@@ -1076,10 +1178,18 @@ int main(int argc, char *argv[])
                 break;
             }
 
-            if (event.type != SDL_KEYUP)
+            if (event.type != SDL_KEYDOWN && event.type != SDL_KEYUP)
                 continue;
 
             SDLKey key = event.key.keysym.sym;
+            if (key == SW_BTN_MENU) {
+                launchGameSwitcher();
+                break;
+            }
+
+            if (event.type != SDL_KEYUP)
+                continue;
+
             if (key == SW_BTN_DOWN) {
                 moveSelection(1);
                 draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
@@ -1118,9 +1228,6 @@ int main(int argc, char *argv[])
                     draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
                 }
             }
-            else if (key == SW_BTN_MENU) {
-                launchGameSwitcher();
-            }
         }
 
         if (quit)
@@ -1135,7 +1242,7 @@ int main(int argc, char *argv[])
 
                 while (read(hwInputs[i], &hwEvent, sizeof(hwEvent)) == sizeof(hwEvent)) {
                     if (hwEvent.type == EV_KEY && hwEvent.code == HW_BTN_MENU &&
-                        hwEvent.value == 0) {
+                        hwEvent.value != 2) {
                         launchGameSwitcher();
                         launchedSwitcher = true;
                         break;

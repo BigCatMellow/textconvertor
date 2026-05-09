@@ -9,6 +9,7 @@ on:
       - "icons/**"
       - "fonts/**"
       - "splash/**"
+      - "preview/**"
       - "onyx-launcher-type-lab.html"
       - ".github/workflows/build-onyx-launcher.yml"
 
@@ -48,7 +49,11 @@ jobs:
           cp Onion/static/build/.tmp_update/res/bootScreen.png package/res/bootScreen.png
           cp src/onyxLauncher/onyxLauncher.c package/source/onyxLauncher.c
           cp src/onyxLauncher/Makefile package/source/Makefile
-          cp onyx-launcher-type-lab.html package/preview/onyx-launcher-type-lab.html
+          cp preview/current-build-preview.html package/preview/current-build-preview.html
+          cp -R preview/preview-assets package/preview/preview-assets
+          if [ -f onyx-launcher-type-lab.html ]; then
+            cp onyx-launcher-type-lab.html package/preview/onyx-launcher-type-lab.html
+          fi
           mkdir -p package/preview/icons package/preview/fonts
           for icon in icons/*.png.b64; do
             base="$(basename "$icon" .b64)"
@@ -67,7 +72,7 @@ jobs:
           Copy miyoo/app/SairaSemiCondensed-Medium.ttf to /mnt/SDCARD/miyoo/app/SairaSemiCondensed-Medium.ttf
 
           Optional preview:
-            Open preview/onyx-launcher-type-lab.html on your PC to inspect the current layout.
+            Open preview/current-build-preview.html on your PC to inspect the current layout.
 
           Enable:
             /mnt/SDCARD/.tmp_update/script/onyx_launcher.sh
