@@ -19,9 +19,9 @@
 #define PANEL_Y 24
 #define PANEL_W 640
 #define PANEL_H 392
-#define ITEM_H 87
+#define ITEM_H 73
 #define ITEM_GAP 0
-#define LIST_TOP 26
+#define LIST_TOP 81
 #define VISIBLE_ROWS 4
 #define MAX_PAGE_ITEMS 64
 #define SYS_DIR "/mnt/SDCARD/.tmp_update"
@@ -836,19 +836,19 @@ static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
     SDL_Color panel = rgb(16, 20, 27);
     SDL_Color panelDark = rgb(16, 20, 27);
     SDL_Color line = rgb(38, 43, 49);
-    SDL_Color textMain = rgb(225, 229, 236);
-    SDL_Color textDim = rgb(137, 141, 147);
-    SDL_Color teal = rgb(29, 50, 86);
-    SDL_Color blue = rgb(29, 50, 86);
+    SDL_Color textMain = rgb(238, 242, 246);
+    SDL_Color textDim = rgb(156, 163, 173);
+    SDL_Color teal = rgb(28, 101, 219);
+    SDL_Color blue = rgb(28, 101, 219);
 
     fill(screen, 0, 0, SCREEN_W, SCREEN_H, bg);
     fillRot(screen, PANEL_X, PANEL_Y, PANEL_W, PANEL_H, panelDark);
     border(screen, PANEL_X, PANEL_Y, PANEL_W, PANEL_H, line);
 
-    image(screen, "onyx-logo-header.png", 56, 40);
-    text(screen, fontFooter, "10:30", 312, 40, textMain);
-    text(screen, fontFooter, "83%", 520, 40, textMain);
-    border(screen, 574, 42, 22, 12, textDim);
+    image(screen, "onyx-logo-header.png", 20, 17);
+    text(screen, fontFooter, "10:30", 312, 15, textMain);
+    text(screen, fontFooter, "83%", 520, 15, textMain);
+    border(screen, 574, 18, 22, 12, textDim);
 
     if (isEmptyState()) {
         icon(screen, pageItems[0].icon, 282, 126, 76);
@@ -873,14 +873,14 @@ static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
                 char subtitle[96];
                 truncateText(pageItems[itemIndex].title, title, sizeof(title), 32);
                 truncateText(pageItems[itemIndex].subtitle, subtitle, sizeof(subtitle), 42);
-                text(screen, fontRowTitle, title, 86, y + 10, textMain);
-                text(screen, fontSubtitle, subtitle, 86, y + 46,
+                text(screen, fontRowTitle, title, 86, y + 8, textMain);
+                text(screen, fontSubtitle, subtitle, 86, y + 43,
                      active ? rgb(202, 209, 220) : textDim);
             }
             else {
                 char title[80];
                 truncateText(pageItems[itemIndex].title, title, sizeof(title), 24);
-                text(screen, fontTitle, title, 86, y + 19, textMain);
+                text(screen, fontTitle, title, 86, y + 17, textMain);
             }
             drawRowAccessory(screen, &pageItems[itemIndex], fontFooter, y, iconY,
                              active, textMain, textDim);
