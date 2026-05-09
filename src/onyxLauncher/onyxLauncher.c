@@ -20,9 +20,9 @@
 #define SCREEN_H 480
 #define ICON_SIZE 38
 #define PANEL_X 0
-#define PANEL_Y 24
+#define PANEL_Y 0
 #define PANEL_W 640
-#define PANEL_H 392
+#define PANEL_H 480
 #define ITEM_H 73
 #define ITEM_GAP 0
 #define LIST_TOP 81
@@ -693,10 +693,14 @@ static void loadPage(ViewMode view)
     scrollOffset = 0;
 
     if (view == VIEW_HOME) {
-        addPageItem("Favorites", NULL, "html-favorites.png", ACTION_HOME_FAVORITES, NULL, NULL);
-        addPageItem("Games", NULL, "html-games.png", ACTION_HOME_GAMES, NULL, NULL);
-        addPageItem("Apps", NULL, "html-apps.png", ACTION_HOME_APPS, NULL, NULL);
-        addPageItem("Settings", NULL, "html-settings.png", ACTION_HOME_SETTINGS, NULL, NULL);
+        addPageItem("Favorites", "Pinned games and apps", "html-favorites.png",
+                    ACTION_HOME_FAVORITES, NULL, NULL);
+        addPageItem("Games", "Browse by system", "html-games.png",
+                    ACTION_HOME_GAMES, NULL, NULL);
+        addPageItem("Apps", "Tools and utilities", "html-apps.png",
+                    ACTION_HOME_APPS, NULL, NULL);
+        addPageItem("Settings", "System configuration", "html-settings.png",
+                    ACTION_HOME_SETTINGS, NULL, NULL);
         return;
     }
 
@@ -789,7 +793,7 @@ static TTF_Font *openFont(int size)
 static const char *backLabel(void)
 {
     if (currentView == VIEW_HOME)
-        return "Menu";
+        return "Back";
     if (currentView == VIEW_CONFIRM_DISABLE)
         return "Cancel";
     return "Back";
@@ -848,6 +852,7 @@ static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
     fill(screen, 0, 0, SCREEN_W, SCREEN_H, bg);
     fillRot(screen, PANEL_X, PANEL_Y, PANEL_W, PANEL_H, panelDark);
     border(screen, PANEL_X, PANEL_Y, PANEL_W, PANEL_H, line);
+    fillRot(screen, 0, 60, 640, 2, line);
 
     image(screen, "onyx-logo-header.png", 20, 17);
     text(screen, fontFooter, "10:30", 312, 15, textMain);
