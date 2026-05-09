@@ -57,13 +57,23 @@ typedef enum {
     VIEW_CONFIRM_DISABLE,
 } ViewMode;
 
+typedef enum {
+    ROW_DRILL,
+    ROW_VALUE,
+    ROW_TOGGLE,
+    ROW_STATIC,
+} RowKind;
+
 typedef struct {
     char title[96];
     char subtitle[128];
+    char value[64];
     char target[256];
     char aux[128];
     const char *icon;
     int action;
+    RowKind kind;
+    bool enabled;
 } PageItem;
 
 static bool quit = false;
@@ -276,8 +286,9 @@ static void image(SDL_Surface *screen, const char *file, int x, int y)
     SDL_FreeSurface(loaded);
 }
 
-static void addPageItem(const char *title, const char *subtitle, const char *iconFile,
-                        int action, const char *target, const char *aux)
+static void addPageItemEx(const char *title, const char *subtitle, const char *iconFile,
+                          int action, const char *target, const char *aux,
+                          RowKind kind, const char *value, bool enabled)
 {
     if (pageItemCount >= MAX_PAGE_ITEMS)
         return;
@@ -286,13 +297,23 @@ static void addPageItem(const char *title, const char *subtitle, const char *ico
              "%s", title);
     snprintf(pageItems[pageItemCount].subtitle, sizeof(pageItems[pageItemCount].subtitle),
              "%s", subtitle ? subtitle : "");
+    snprintf(pageItems[pageItemCount].value, sizeof(pageItems[pageItemCount].value),
+             "%s", value ? value : "");
     snprintf(pageItems[pageItemCount].target, sizeof(pageItems[pageItemCount].target),
              "%s", target ? target : "");
     snprintf(pageItems[pageItemCount].aux, sizeof(pageItems[pageItemCount].aux),
              "%s", aux ? aux : "");
     pageItems[pageItemCount].icon = iconFile;
     pageItems[pageItemCount].action = action;
+    pageItems[pageItemCount].kind = kind;
+    pageItems[pageItemCount].enabled = enabled;
     pageItemCount++;
+}
+
+static void addPageItem(const char *title, const char *subtitle, const char *iconFile,
+                        int action, const char *target, const char *aux)
+{
+    addPageItemEx(title, subtitle, iconFile, action, target, aux, ROW_DRILL, NULL, false);
 }
 
 static void configValue(const char *path, const char *key, char *out, size_t outSize)
@@ -682,28 +703,32 @@ static void loadPage(ViewMode view)
         if (pageItemCount == 0)
             addOnionJsonList(ONION_RECENTS_FILE, VISIBLE_ROWS);
         if (pageItemCount == 0)
-            addPageItem("No favorites yet", "Press Y on a game", "html-favorites.png", ACTION_NONE, NULL, NULL);
+            addPageItemEx("No favorites yet", "Press Y on a game to pin it here",
+                          "html-favorites.png", ACTION_NONE, NULL, NULL, ROW_STATIC, NULL, false);
         return;
     }
 
     if (view == VIEW_GAMES) {
         addSystemsFromSd();
         if (pageItemCount == 0)
-            addPageItem("No systems found", "Check /Roms and /Emu", "html-games.png", ACTION_NONE, NULL, NULL);
+            addPageItemEx("No systems found", "Check /Roms and /Emu",
+                          "html-games.png", ACTION_NONE, NULL, NULL, ROW_STATIC, NULL, false);
         return;
     }
 
     if (view == VIEW_SYSTEM_ROMS) {
         addRomsForSystem(selectedSystem, selectedSystemExts);
         if (pageItemCount == 0)
-            addPageItem("No games found", selectedSystemLabel, "html-games.png", ACTION_NONE, NULL, NULL);
+            addPageItemEx("No games found", selectedSystemLabel, "html-games.png",
+                          ACTION_NONE, NULL, NULL, ROW_STATIC, NULL, false);
         return;
     }
 
     if (view == VIEW_APPS) {
         addAppsFromSd();
         if (pageItemCount == 0)
-            addPageItem("No apps found", "Check /App", "html-apps.png", ACTION_NONE, NULL, NULL);
+            addPageItemEx("No apps found", "Check /App", "html-apps.png",
+                          ACTION_NONE, NULL, NULL, ROW_STATIC, NULL, false);
         return;
     }
 
@@ -715,8 +740,10 @@ static void loadPage(ViewMode view)
 
     addPageItem("GameSwitcher", "Recent games and quick resume", "html-games.png", ACTION_GAME_SWITCHER, NULL, NULL);
     addPageItem("Exit to Onion", "Open the stock main screen", "html-settings.png", 0, NULL, NULL);
-    addPageItem("Disable ONYX", "Boot stock Onion next time", "html-settings.png", ACTION_DISABLE_ONYX, NULL, NULL);
-    addPageItem("About ONYX", "Custom launcher preview", "html-settings.png", ACTION_NONE, NULL, NULL);
+    addPageItemEx("ONYX launcher", "Toggle back to stock Onion", "html-settings.png",
+                  ACTION_DISABLE_ONYX, NULL, NULL, ROW_TOGGLE, NULL, true);
+    addPageItemEx("Version", "Local development build", "html-settings.png",
+                  ACTION_NONE, NULL, NULL, ROW_VALUE, "0.2", false);
 }
 
 static void moveSelection(int delta)
@@ -764,6 +791,42 @@ static const char *backLabel(void)
     return "Back";
 }
 
+static bool isEmptyState(void)
+{
+    return pageItemCount == 1 && pageItems[0].action == ACTION_NONE &&
+           strncmp(pageItems[0].title, "No ", 3) == 0;
+}
+
+static void drawToggle(SDL_Surface *screen, int x, int y, bool enabled,
+                       SDL_Color activeColor, SDL_Color offColor, SDL_Color knobColor)
+{
+    SDL_Color body = enabled ? activeColor : offColor;
+    fillRot(screen, x, y, 56, 28, body);
+    border(screen, x, y, 56, 28, body);
+    fillRot(screen, x + (enabled ? 30 : 6), y + 5, 18, 18, knobColor);
+}
+
+static void drawRowAccessory(SDL_Surface *screen, const PageItem *item, TTF_Font *fontFooter,
+                             int y, int iconY, bool active, SDL_Color textMain,
+                             SDL_Color textDim)
+{
+    if (item->kind == ROW_VALUE) {
+        char value[48];
+        truncateText(item->value, value, sizeof(value), 16);
+        text(screen, fontFooter, value, 492, y + 25, active ? textMain : textDim);
+        return;
+    }
+
+    if (item->kind == ROW_TOGGLE) {
+        drawToggle(screen, 532, y + 25, item->enabled, rgb(221, 118, 0),
+                   rgb(42, 47, 54), textMain);
+        return;
+    }
+
+    if (item->kind == ROW_DRILL)
+        icon(screen, "html-chev.png", 574, iconY, ICON_SIZE);
+}
+
 static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
                  TTF_Font *fontTitle, TTF_Font *fontRowTitle, TTF_Font *fontSubtitle)
 {
@@ -787,33 +850,41 @@ static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
     text(screen, fontFooter, "83%", 520, 40, textMain);
     border(screen, 574, 42, 22, 12, textDim);
 
-    for (int row = 0; row < VISIBLE_ROWS; row++) {
-        int itemIndex = scrollOffset + row;
-        if (itemIndex >= pageItemCount)
-            break;
+    if (isEmptyState()) {
+        icon(screen, pageItems[0].icon, 282, 126, 76);
+        text(screen, fontTitle, pageItems[0].title, 222, 220, textMain);
+        text(screen, fontSubtitle, pageItems[0].subtitle, 196, 260, textDim);
+    }
+    else {
+        for (int row = 0; row < VISIBLE_ROWS; row++) {
+            int itemIndex = scrollOffset + row;
+            if (itemIndex >= pageItemCount)
+                break;
 
-        int y = LIST_TOP + row * (ITEM_H + ITEM_GAP);
-        bool active = itemIndex == selected;
+            int y = LIST_TOP + row * (ITEM_H + ITEM_GAP);
+            bool active = itemIndex == selected;
 
-        fillRot(screen, 0, y, 640, ITEM_H, active ? blue : panel);
-        border(screen, 0, y, 640, ITEM_H, active ? teal : bg);
-        int iconY = y + (ITEM_H - ICON_SIZE) / 2;
-        icon(screen, pageItems[itemIndex].icon, 28, iconY, ICON_SIZE);
-        if (pageItems[itemIndex].subtitle[0]) {
-            char title[80];
-            char subtitle[96];
-            truncateText(pageItems[itemIndex].title, title, sizeof(title), 32);
-            truncateText(pageItems[itemIndex].subtitle, subtitle, sizeof(subtitle), 42);
-            text(screen, fontRowTitle, title, 86, y + 10, textMain);
-            text(screen, fontSubtitle, subtitle, 86, y + 46,
-                 active ? rgb(202, 209, 220) : textDim);
+            fillRot(screen, 0, y, 640, ITEM_H, active ? blue : panel);
+            border(screen, 0, y, 640, ITEM_H, active ? teal : bg);
+            int iconY = y + (ITEM_H - ICON_SIZE) / 2;
+            icon(screen, pageItems[itemIndex].icon, 28, iconY, ICON_SIZE);
+            if (pageItems[itemIndex].subtitle[0]) {
+                char title[80];
+                char subtitle[96];
+                truncateText(pageItems[itemIndex].title, title, sizeof(title), 32);
+                truncateText(pageItems[itemIndex].subtitle, subtitle, sizeof(subtitle), 42);
+                text(screen, fontRowTitle, title, 86, y + 10, textMain);
+                text(screen, fontSubtitle, subtitle, 86, y + 46,
+                     active ? rgb(202, 209, 220) : textDim);
+            }
+            else {
+                char title[80];
+                truncateText(pageItems[itemIndex].title, title, sizeof(title), 24);
+                text(screen, fontTitle, title, 86, y + 19, textMain);
+            }
+            drawRowAccessory(screen, &pageItems[itemIndex], fontFooter, y, iconY,
+                             active, textMain, textDim);
         }
-        else {
-            char title[80];
-            truncateText(pageItems[itemIndex].title, title, sizeof(title), 24);
-            text(screen, fontTitle, title, 86, y + 19, textMain);
-        }
-        icon(screen, "html-chev.png", 574, iconY, ICON_SIZE);
     }
 
     fillRot(screen, 320, 374, 2, 26, line);
