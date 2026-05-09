@@ -19,9 +19,9 @@
 #define PANEL_Y 24
 #define PANEL_W 640
 #define PANEL_H 392
-#define ITEM_H 78
+#define ITEM_H 87
 #define ITEM_GAP 0
-#define LIST_TOP 62
+#define LIST_TOP 26
 #define VISIBLE_ROWS 4
 #define MAX_PAGE_ITEMS 64
 #define SYS_DIR "/mnt/SDCARD/.tmp_update"
@@ -947,7 +947,9 @@ static void launchApp(const char *launchPath)
 
 static void launchGameSwitcher(void)
 {
-    launchApp(APPS_DIR "/StartGameSwitcher/launch.sh");
+    runShellCommand("cd " SYS_DIR " && touch .runGameSwitcher && "
+                    "LD_PRELOAD=/mnt/SDCARD/miyoo/lib/libpadsp.so gameSwitcher; "
+                    "rm -f .runGameSwitcher");
 }
 
 static void disableOnyx(void)
