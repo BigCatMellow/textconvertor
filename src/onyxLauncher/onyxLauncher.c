@@ -2,14 +2,18 @@
 #include <SDL/SDL_image.h>
 #include <SDL/SDL_ttf.h>
 #include <dirent.h>
+#include <fcntl.h>
+#include <linux/input.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/poll.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "system/keymap_hw.h"
 #include "system/keymap_sw.h"
 
 #define SCREEN_W 640
@@ -1035,60 +1039,87 @@ int main(int argc, char *argv[])
     loadPage(VIEW_HOME);
     draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
 
+    int hwInput = open("/dev/input/event0", O_RDONLY | O_NONBLOCK);
+    struct pollfd hwPoll = {hwInput, POLLIN, 0};
+
     while (!quit) {
         SDL_Event event;
-        if (!SDL_WaitEvent(&event))
-            continue;
+        bool sawEvent = false;
 
-        if (event.type == SDL_QUIT)
+        while (SDL_PollEvent(&event)) {
+            sawEvent = true;
+            if (event.type == SDL_QUIT) {
+                quit = true;
+                break;
+            }
+
+            if (event.type != SDL_KEYUP)
+                continue;
+
+            SDLKey key = event.key.keysym.sym;
+            if (key == SW_BTN_DOWN) {
+                moveSelection(1);
+                draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
+            }
+            else if (key == SW_BTN_UP) {
+                moveSelection(-1);
+                draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
+            }
+            else if (key == SW_BTN_A) {
+                activateSelection();
+                if (!quit)
+                    draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
+            }
+            else if (key == SW_BTN_Y) {
+                if ((currentView == VIEW_SYSTEM_ROMS || currentView == VIEW_FAVORITES) &&
+                    pageItemCount > 0 && pageItems[selected].action == ACTION_LAUNCH_ROM) {
+                    toggleFavorite(&pageItems[selected]);
+                    if (currentView == VIEW_SYSTEM_ROMS)
+                        loadPage(VIEW_SYSTEM_ROMS);
+                    else
+                        loadPage(VIEW_FAVORITES);
+                    draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
+                }
+            }
+            else if (key == SW_BTN_B) {
+                if (currentView == VIEW_SYSTEM_ROMS) {
+                    loadPage(VIEW_GAMES);
+                    draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
+                }
+                else if (currentView == VIEW_CONFIRM_DISABLE) {
+                    loadPage(VIEW_SETTINGS);
+                    draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
+                }
+                else if (currentView != VIEW_HOME) {
+                    loadPage(VIEW_HOME);
+                    draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
+                }
+            }
+            else if (key == SW_BTN_MENU) {
+                launchGameSwitcher();
+            }
+        }
+
+        if (quit)
             break;
 
-        if (event.type != SDL_KEYUP)
-            continue;
-
-        SDLKey key = event.key.keysym.sym;
-        if (key == SW_BTN_DOWN) {
-            moveSelection(1);
-            draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
-        }
-        else if (key == SW_BTN_UP) {
-            moveSelection(-1);
-            draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
-        }
-        else if (key == SW_BTN_A) {
-            activateSelection();
-            if (!quit)
-                draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
-        }
-        else if (key == SW_BTN_Y) {
-            if ((currentView == VIEW_SYSTEM_ROMS || currentView == VIEW_FAVORITES) &&
-                pageItemCount > 0 && pageItems[selected].action == ACTION_LAUNCH_ROM) {
-                toggleFavorite(&pageItems[selected]);
-                if (currentView == VIEW_SYSTEM_ROMS)
-                    loadPage(VIEW_SYSTEM_ROMS);
-                else
-                    loadPage(VIEW_FAVORITES);
-                draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
+        if (hwInput >= 0 && poll(&hwPoll, 1, sawEvent ? 0 : 40) > 0) {
+            struct input_event hwEvent;
+            while (read(hwInput, &hwEvent, sizeof(hwEvent)) == sizeof(hwEvent)) {
+                if (hwEvent.type == EV_KEY && hwEvent.code == HW_BTN_MENU &&
+                    hwEvent.value == 0) {
+                    launchGameSwitcher();
+                    break;
+                }
             }
         }
-        else if (key == SW_BTN_B) {
-            if (currentView == VIEW_SYSTEM_ROMS) {
-                loadPage(VIEW_GAMES);
-                draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
-            }
-            else if (currentView == VIEW_CONFIRM_DISABLE) {
-                loadPage(VIEW_SETTINGS);
-                draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
-            }
-            else if (currentView != VIEW_HOME) {
-                loadPage(VIEW_HOME);
-                draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
-            }
-        }
-        else if (key == SW_BTN_MENU) {
-            launchGameSwitcher();
+        else if (!sawEvent) {
+            SDL_Delay(16);
         }
     }
+
+    if (hwInput >= 0)
+        close(hwInput);
 
     TTF_CloseFont(fontFooter);
     TTF_CloseFont(fontBrand);
