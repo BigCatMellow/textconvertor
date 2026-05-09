@@ -896,13 +896,13 @@ static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
         }
     }
 
-    fillRot(screen, 320, 374, 2, 26, line);
-    icon(screen, "html-btn-a.png", 66, 375, 30);
-    text(screen, fontFooter, "Select", 102, 379, textDim);
+    fillRot(screen, 320, 432, 2, 26, line);
+    icon(screen, "html-btn-a.png", 66, 430, 30);
+    text(screen, fontFooter, "Select", 102, 429, textDim);
     if (currentView == VIEW_SYSTEM_ROMS || currentView == VIEW_FAVORITES)
-        text(screen, fontSubtitle, "Y Favorite", 265, 382, textDim);
-    icon(screen, "html-btn-b.png", 480, 375, 30);
-    text(screen, fontFooter, backLabel(), 516, 379, textDim);
+        text(screen, fontSubtitle, "Y Favorite", 265, 432, textDim);
+    icon(screen, "html-btn-b.png", 480, 430, 30);
+    text(screen, fontFooter, backLabel(), 516, 429, textDim);
 
     SDL_Flip(screen);
 }
