@@ -1,0 +1,6 @@
+{
+	"label":	"ONYX Launcher",
+	"icon":	"/mnt/SDCARD/.tmp_update/res/onyx/icons/onyx-logo.png",
+	"launch":	"launch.sh",
+	"description":	"Enable the ONYX launcher"
+}

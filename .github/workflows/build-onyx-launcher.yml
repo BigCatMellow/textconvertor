@@ -7,6 +7,7 @@ on:
       - "src/onyxLauncher/**"
       - "scripts/**"
       - "icons/**"
+      - "app/**"
       - "fonts/**"
       - "splash/**"
       - "preview/**"
@@ -27,7 +28,7 @@ jobs:
       - name: Apply Onyx overlay
         run: |
           bash scripts/apply-overlay.sh Onion
-          mkdir -p Onion/out package/bin package/script package/source package/miyoo/app package/preview
+          mkdir -p Onion/out package/bin package/script package/source package/miyoo/app package/preview package/App
 
       - name: Pull Miyoo toolchain
         run: docker pull aemiii91/miyoomini-toolchain:latest
@@ -47,6 +48,7 @@ jobs:
           cp Onion/static/build/.tmp_update/res/onyx/icons/*.png package/res/onyx/icons/
           cp Onion/static/build/miyoo/app/SairaSemiCondensed-Medium.ttf package/miyoo/app/SairaSemiCondensed-Medium.ttf
           cp Onion/static/build/.tmp_update/res/bootScreen.png package/res/bootScreen.png
+          cp -R app/OnyxLauncher package/App/OnyxLauncher
           cp src/onyxLauncher/onyxLauncher.c package/source/onyxLauncher.c
           cp src/onyxLauncher/Makefile package/source/Makefile
           cp preview/current-build-preview.html package/preview/current-build-preview.html
@@ -70,6 +72,7 @@ jobs:
           Copy res/onyx/icons to /mnt/SDCARD/.tmp_update/res/onyx/icons
           Copy res/bootScreen.png to /mnt/SDCARD/.tmp_update/res/bootScreen.png
           Copy miyoo/app/SairaSemiCondensed-Medium.ttf to /mnt/SDCARD/miyoo/app/SairaSemiCondensed-Medium.ttf
+          Copy App/OnyxLauncher to /mnt/SDCARD/App/OnyxLauncher
 
           Optional preview:
             Open preview/current-build-preview.html on your PC to inspect the current layout.

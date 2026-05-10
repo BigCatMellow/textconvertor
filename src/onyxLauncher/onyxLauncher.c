@@ -123,6 +123,24 @@ static void sortPageItems(void)
         qsort(pageItems, pageItemCount, sizeof(PageItem), comparePageItems);
 }
 
+static int batteryPercent(void)
+{
+    FILE *fp = fopen("/tmp/percBat", "r");
+    int percent = -1;
+
+    if (fp) {
+        if (fscanf(fp, "%d", &percent) != 1)
+            percent = -1;
+        fclose(fp);
+    }
+
+    if (percent == 500)
+        return 100;
+    if (percent < 0 || percent > 100)
+        return -1;
+    return percent;
+}
+
 static void sigHandler(int sig)
 {
     (void)sig;
@@ -922,8 +940,13 @@ static void draw(SDL_Surface *screen, TTF_Font *fontFooter, TTF_Font *fontBrand,
 
     image(screen, "header-logo.png", 20, 17);
     text(screen, fontFooter, "10:30", 312, 15, textMain);
-    text(screen, fontFooter, "83%", 520, 15, textMain);
-    border(screen, 574, 18, 22, 12, textDim);
+    int battery = batteryPercent();
+    char batteryLabel[8];
+    if (battery >= 0)
+        snprintf(batteryLabel, sizeof(batteryLabel), "%d%%", battery);
+    else
+        snprintf(batteryLabel, sizeof(batteryLabel), "--%%");
+    text(screen, fontFooter, batteryLabel, 520, 15, textMain);
 
     if (isEmptyState()) {
         icon(screen, pageItems[0].icon, 282, 126, 76);
@@ -1011,7 +1034,9 @@ static void launchRom(const char *systemName, const char *romPath)
     snprintf(launchPath, sizeof(launchPath), EMU_DIR "/%s/launch.sh", systemName);
     doubleQuote(launchPath, quotedLaunch, sizeof(quotedLaunch));
     doubleQuote(romPath, quotedRom, sizeof(quotedRom));
-    snprintf(command, sizeof(command), "%s %s", quotedLaunch, quotedRom);
+    snprintf(command, sizeof(command),
+             "LD_PRELOAD=/mnt/SDCARD/miyoo/app/../lib/libpadsp.so %s %s",
+             quotedLaunch, quotedRom);
     queueRuntimeCommand(command);
 }
 
