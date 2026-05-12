@@ -102,7 +102,9 @@ static char selectedSystemLabel[96] = "";
 static char selectedSystemExts[128] = "";
 static char pendingCommand[760] = "";
 static bool audioReady = false;
-static Mix_Chunk *sndNav = NULL;
+static Mix_Chunk *sndTapUp = NULL;
+static Mix_Chunk *sndTapDown = NULL;
+static Mix_Chunk *sndSelect = NULL;
 static Mix_Chunk *sndIntro = NULL;
 
 static int compareText(const char *a, const char *b)
@@ -175,14 +177,28 @@ static void initAudio(void)
         return;
     }
     audioReady = true;
-    sndNav = Mix_LoadWAV(SOUND_DIR "/drips2.wav");
+    sndTapUp = Mix_LoadWAV(SOUND_DIR "/tap-up.wav");
+    sndTapDown = Mix_LoadWAV(SOUND_DIR "/tap-down.wav");
+    sndSelect = Mix_LoadWAV(SOUND_DIR "/selections.wav");
     sndIntro = Mix_LoadWAV(SOUND_DIR "/intro2.wav");
 }
 
-static void playNav(void)
+static void playTapUp(void)
 {
-    if (audioReady && sndNav)
-        Mix_PlayChannel(-1, sndNav, 0);
+    if (audioReady && sndTapUp)
+        Mix_PlayChannel(-1, sndTapUp, 0);
+}
+
+static void playTapDown(void)
+{
+    if (audioReady && sndTapDown)
+        Mix_PlayChannel(-1, sndTapDown, 0);
+}
+
+static void playSelect(void)
+{
+    if (audioReady && sndSelect)
+        Mix_PlayChannel(-1, sndSelect, 0);
 }
 
 static void playIntro(void)
@@ -193,7 +209,9 @@ static void playIntro(void)
 
 static void closeAudio(void)
 {
-    if (sndNav) { Mix_FreeChunk(sndNav); sndNav = NULL; }
+    if (sndTapUp) { Mix_FreeChunk(sndTapUp); sndTapUp = NULL; }
+    if (sndTapDown) { Mix_FreeChunk(sndTapDown); sndTapDown = NULL; }
+    if (sndSelect) { Mix_FreeChunk(sndSelect); sndSelect = NULL; }
     if (sndIntro) { Mix_FreeChunk(sndIntro); sndIntro = NULL; }
     if (audioReady) { Mix_CloseAudio(); audioReady = false; }
 }
@@ -1388,15 +1406,16 @@ int main(int argc, char *argv[])
 
             if (key == SW_BTN_DOWN) {
                 moveSelection(1);
-                playNav();
+                playTapDown();
                 draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
             }
             else if (key == SW_BTN_UP) {
                 moveSelection(-1);
-                playNav();
+                playTapUp();
                 draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
             }
             else if (key == SW_BTN_A) {
+                playSelect();
                 activateSelection();
                 if (!quit)
                     draw(screen, fontFooter, fontBrand, fontTitle, fontRowTitle, fontSubtitle);
