@@ -78,6 +78,7 @@ jobs:
           Copy res/onyx/icons to /mnt/SDCARD/.tmp_update/res/onyx/icons
           Copy res/onyx/sound to /mnt/SDCARD/.tmp_update/res/onyx/sound
           Copy res/bootScreen.png to /mnt/SDCARD/.tmp_update/res/bootScreen.png
+          Copy res/bootScreen.png to /mnt/SDCARD/Saves/CurrentProfile/theme/skin/extra/bootScreen.png
           Copy miyoo/app/SairaSemiCondensed-Medium.ttf to /mnt/SDCARD/miyoo/app/SairaSemiCondensed-Medium.ttf
           Copy App/OnyxLauncher to /mnt/SDCARD/App/OnyxLauncher
 

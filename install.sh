@@ -27,6 +27,7 @@ mkdir -p "$sysdir/script"
 mkdir -p "$sysdir/res/onyx/icons"
 mkdir -p "$sysdir/res/onyx/sound"
 mkdir -p "$sysdir/config"
+mkdir -p "$sd/Saves/CurrentProfile/theme/skin/extra"
 mkdir -p "$sd/miyoo/app"
 mkdir -p "$sd/App/OnyxLauncher"
 
@@ -39,6 +40,7 @@ chmod +x "$sysdir/script/onyx_launcher.sh"
 cp "$pkgdir/res/onyx/icons/"*.png "$sysdir/res/onyx/icons/"
 cp "$pkgdir/res/onyx/sound/"*.wav "$sysdir/res/onyx/sound/" 2>/dev/null || true
 cp "$pkgdir/res/bootScreen.png" "$sysdir/res/bootScreen.png"
+cp "$pkgdir/res/bootScreen.png" "$sd/Saves/CurrentProfile/theme/skin/extra/bootScreen.png"
 
 cp "$pkgdir/miyoo/app/SairaSemiCondensed-Medium.ttf" "$sd/miyoo/app/SairaSemiCondensed-Medium.ttf"
 
