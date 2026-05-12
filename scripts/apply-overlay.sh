@@ -25,6 +25,11 @@ if compgen -G "$repo_root/icons/*.png.b64" > /dev/null; then
     done
 fi
 
+mkdir -p "$onion_root/static/build/.tmp_update/res/onyx/sound"
+if compgen -G "$repo_root/res/onyx/sound/*.wav" > /dev/null; then
+    cp "$repo_root"/res/onyx/sound/*.wav "$onion_root/static/build/.tmp_update/res/onyx/sound/"
+fi
+
 mkdir -p "$onion_root/static/build/miyoo/app"
 if compgen -G "$repo_root/fonts/*.b64" > /dev/null; then
     for font in "$repo_root"/fonts/*.b64; do

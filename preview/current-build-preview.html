@@ -148,37 +148,8 @@
     .clock { left: 312px; }
 
     .battery {
-      left: 520px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .batteryIcon {
-      width: 22px;
-      height: 12px;
-      border: 2px solid var(--text-dim);
-      position: relative;
-    }
-
-    .batteryIcon::before {
-      content: "";
-      position: absolute;
-      left: 3px;
-      top: 2px;
-      width: 11px;
-      height: 4px;
-      background: #9ed8df;
-    }
-
-    .batteryIcon::after {
-      content: "";
-      position: absolute;
-      right: -5px;
-      top: 2px;
-      width: 3px;
-      height: 5px;
-      background: var(--text-dim);
+      right: 20px;
+      left: auto;
     }
 
     .list {
@@ -270,6 +241,59 @@
     }
 
     .row.active .subtitle { color: rgba(255,255,255,0.78); }
+
+    .scrollbar {
+      position: absolute;
+      right: 4px;
+      top: calc(var(--list-top) + 4px);
+      height: calc(var(--item-height) * 4 - 8px);
+      width: 4px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 2px;
+    }
+
+    .scrollbar .thumb {
+      position: absolute;
+      left: 0; right: 0;
+      background: rgba(255,255,255,0.32);
+      border-radius: 2px;
+      top: 0;
+      height: 50%;
+    }
+
+    .emptyState {
+      position: absolute;
+      left: 0;
+      top: var(--list-top);
+      width: 640px;
+      height: calc(var(--footer-band-y) - var(--list-top));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .emptyIcon svg {
+      width: 76px;
+      height: 76px;
+      fill: none;
+      stroke: var(--text-dim);
+      stroke-width: var(--glyph-stroke);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .emptyTitle {
+      font-size: var(--title-size);
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .emptyHint {
+      font-size: var(--subtitle-size);
+      color: var(--text-dim);
+    }
 
     .chevron {
       display: flex;
@@ -434,8 +458,8 @@
         <div class="headerLine"></div>
         <div class="footerBand"></div>
         <div class="brand"><img src="preview-assets/icons/header-logo.png" alt="ONYX"></div>
-        <div class="clock">10:30</div>
-        <div class="battery"><span>83%</span><span class="batteryIcon"></span></div>
+        <div class="clock" id="clock">10:30</div>
+        <div class="battery">83%</div>
         <div class="list" id="list"></div>
         <div class="footer">
           <span class="footerAction left"><span class="btnGlyph a">A</span><span>Select</span></span>
@@ -535,33 +559,50 @@
         ["grid", "Apps", "Tools and utilities"],
         ["settings", "Settings", "System configuration"]
       ],
+      Recents: [
+        ["file", "Pokemon Emerald", "Game Boy Advance"],
+        ["file", "Chrono Trigger", "Super Nintendo"],
+        ["file", "Mega Man X", "Super Nintendo"],
+        ["file", "Sonic 2", "Mega Drive"]
+      ],
       Favorites: [
         ["file", "Pokemon Emerald", "Game Boy Advance"],
         ["file", "Chrono Trigger", "Super Nintendo"],
         ["file", "Sonic 2", "Mega Drive"],
-        ["clock", "RetroArch", "App"]
+        ["file", "Legend of Zelda", "Game Boy Advance"]
       ],
       Games: [
-        ["arcade", "Arcade", "312 games"],
-        ["handheld", "Game Boy Advance", "247 games"],
-        ["console", "Mega Drive", "89 games"],
-        ["console", "Super Nintendo", "156 games"]
+        ["gamepad", "Arcade", "312 games"],
+        ["gamepad", "Game Boy Advance", "247 games"],
+        ["gamepad", "Mega Drive", "89 games"],
+        ["gamepad", "Super Nintendo", "156 games"]
+      ],
+      "ROM List": [
+        ["file", "Chrono Trigger", "Super Nintendo"],
+        ["file", "Donkey Kong Country", "Super Nintendo"],
+        ["file", "EarthBound", "Super Nintendo"],
+        ["file", "F-Zero", "Super Nintendo"],
+        ["file", "Final Fantasy VI", "Super Nintendo"],
+        ["file", "Super Mario World", "Super Nintendo"]
       ],
       Apps: [
-        ["clock", "RetroArch", "Frontend"],
+        ["grid", "RetroArch", "Frontend"],
         ["grid", "PortMaster", "Ports and tools"],
-        ["folder", "File Manager", "Browse files"],
-        ["music", "Music Player", "Audio"]
+        ["grid", "File Manager", "Browse files"],
+        ["grid", "Music Player", "Audio"]
+      ],
+      "Empty State": [
+        ["star", "No favorites yet", "Press Y on a game to pin it here"]
       ],
       Settings: [
         ["settings", "Tweaks", "System behavior and tools"],
         ["settings", "UI Theme", "Browse and apply themes"],
         ["grid", "Package Manager", "Add Onion apps and systems"],
         ["clock", "Activity Tracker", "Play time and history"],
-        ["clock", "GameSwitcher", "Recent games and quick resume"],
+        ["clock", "Recents", "Recent games and quick resume"],
         ["settings", "Stock Onion", "Open the original main screen once"],
         ["settings", "ONYX launcher", "Toggle back to stock Onion"],
-        ["info", "Version", "0.3"]
+        ["info", "Version", "0.4"]
       ]
     };
 
@@ -607,25 +648,53 @@
     function renderRows() {
       const list = document.getElementById("list");
       list.innerHTML = "";
-      pages[pageName].forEach((rowData, index) => {
-        const [icon, title, subtitle] = rowData;
-        const active = index === selected;
-        const row = document.createElement("button");
-        row.type = "button";
-        row.className = "row hasSubtitle" + (active ? " active" : "");
-        row.addEventListener("click", () => {
-          selected = index;
-          renderRows();
-        });
-        row.innerHTML = `
-          <span class="rowIcon">${ICONS[icon] || ICONS.file}</span>
-          <span class="rowCopy"><span class="title">${title}</span><span class="subtitle">${subtitle}</span></span>
-          <span class="chevron"><span class="chevronIcon">${active ? ICONS.chevronActive : ICONS.chevron}</span></span>
+      const data = pages[pageName];
+      const isEmpty = pageName === "Empty State";
+
+      // Remove old scrollbar / empty state
+      document.querySelectorAll(".scrollbar, .emptyState").forEach(el => el.remove());
+
+      if (isEmpty) {
+        const [icon, title, hint] = data[0];
+        const empty = document.createElement("div");
+        empty.className = "emptyState";
+        empty.innerHTML = `
+          <span class="emptyIcon">${ICONS[icon] || ICONS.star}</span>
+          <span class="emptyTitle">${title}</span>
+          <span class="emptyHint">${hint}</span>
         `;
-        list.append(row);
-      });
+        document.getElementById("screen").appendChild(empty);
+      } else {
+        data.forEach((rowData, index) => {
+          const [icon, title, subtitle] = rowData;
+          const active = index === selected;
+          const row = document.createElement("button");
+          row.type = "button";
+          row.className = "row hasSubtitle" + (active ? " active" : "");
+          row.addEventListener("click", () => {
+            selected = index;
+            renderRows();
+          });
+          row.innerHTML = `
+            <span class="rowIcon">${ICONS[icon] || ICONS.file}</span>
+            <span class="rowCopy"><span class="title">${title}</span><span class="subtitle">${subtitle}</span></span>
+            <span class="chevron"><span class="chevronIcon">${active ? ICONS.chevronActive : ICONS.chevron}</span></span>
+          `;
+          list.append(row);
+        });
+
+        if (data.length > 4) {
+          const bar = document.createElement("div");
+          bar.className = "scrollbar";
+          const pct = Math.max(12, 100 * 4 / data.length);
+          const top = 100 * selected / data.length;
+          bar.innerHTML = `<div class="thumb" style="height:${pct}%;top:${Math.min(top, 100-pct)}%"></div>`;
+          document.getElementById("screen").appendChild(bar);
+        }
+      }
+
       document.getElementById("favoriteHint").style.display =
-        pageName === "Favorites" || pageName === "Games" ? "flex" : "none";
+        pageName === "Favorites" || pageName === "ROM List" || pageName === "Recents" ? "flex" : "none";
       document.getElementById("backText").textContent = pageName === "Home" ? "Back" : "Back";
     }
 
@@ -702,6 +771,15 @@
     setConfig(baseline);
     renderTabs();
     renderRows();
+
+    function updateClock() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, "0");
+      const m = String(now.getMinutes()).padStart(2, "0");
+      document.getElementById("clock").textContent = h + ":" + m;
+    }
+    updateClock();
+    setInterval(updateClock, 10000);
   </script>
 </body>
 </html>

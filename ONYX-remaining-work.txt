@@ -1,0 +1,141 @@
+ONYX Remaining Work
+Updated: 2026-05-11
+
+Current status
+- Package14 is installed on F: and ONYX is enabled.
+- Latest GitHub commit pushed: 2d30837, "Update Onyx battery and launch package".
+- ONYX now reads live battery percentage from /tmp/percBat and shows only text.
+- ONYX now reads live system clock instead of hardcoded "10:30".
+- ROM launch commands now include the Onion/RetroArch LD_PRELOAD handoff.
+- ONYX re-enable app exists at F:\App\OnyxLauncher.
+- Splash screen package asset uses Images\onyx-splash.png.
+- ONYX Recents view (VIEW_RECENTS) added, reading from recentlist.json and recentlist-hidden.json.
+- MENU button now opens ONYX Recents view instead of stock gameSwitcher.
+- Recents view shows system labels from Emu config instead of raw directory names.
+- Y-to-favorite works from Recents view.
+- HTML preview now covers all pages: Home, Recents, Favorites, Games, ROM List, Apps, Settings.
+- LAYOUT.md updated to match actual code values (list top 62, row height 88).
+- Apps list now hides OnyxLauncher, PackageManager, and other system apps from ONYX.
+- Games list now hides systems with 0 ROMs.
+- Favorites sync: toggling a favorite in ONYX also writes to Onion's favourite.json.
+- install.sh created for one-command package installation.
+- Version bumped to 0.4.
+- Scrollbar indicator added for lists longer than 4 items.
+- Empty state display now properly centered (icon + title + hint).
+- HTML preview now includes scrollbar, empty state tab, and live clock.
+- Package14 source, scripts, preview, and INSTALL.txt synced with Onyx-v2.
+
+Must-fix issues
+- Confirm NES and other systems no longer launch feeling like fast-forward.
+- Confirm MENU button behavior from ONYX:
+  - Should open the intended ONYX game switcher/recent-games view, not stock Miyoo UI.
+  - Should not exit ONYX unexpectedly.
+- Confirm pressing B on the ONYX home screen does not make the launcher disappear without a clear recovery path.
+- Confirm disabling ONYX from its menu can be reversed from stock Onion via Apps > ONYX Launcher.
+- Confirm the footer is visually pinned to the bottom on device, not just in the HTML preview.
+- Confirm the menu/list fills the intended usable screen area on device.
+- Confirm game launch, app launch, settings launch, and back navigation all return to ONYX where expected.
+
+Launcher pages still needed or needing polish
+- Home page:
+  - [DONE] Final mockup visual direction applied.
+  - Confirm header logo brightness and size on device.
+  - [DONE] Battery percentage is text-only, right-aligned.
+- Favorites page:
+  - [DONE] ONYX-styled list.
+  - [DONE] Add/remove favorites reliably with Y.
+  - [DONE] Sync with Onion favorites file without breaking stock Onion.
+- Games page:
+  - [DONE] ONYX-styled systems list.
+  - [DONE] ONYX-styled ROM list for each system.
+  - [DONE] Systems with 0 ROMs hidden from list.
+  - [DONE] Long game titles truncate with ellipsis (truncateText, 32 char limit).
+- Apps page:
+  - [DONE] ONYX-styled app list.
+  - [DONE] System/cache apps hidden (OnyxLauncher, PackageManager, AdvanceMENU, etc.).
+  - [DONE] ONYX Launcher app hidden from ONYX but still present in stock Onion.
+- Settings page:
+  - [DONE] ONYX-styled settings/toggles.
+  - Confirm Tweaks, UI Theme, Package Manager, Activity Tracker, Stock Onion, and Disable ONYX all work on device.
+  - [DONE] GameSwitcher replaced with Recents entry that opens VIEW_RECENTS.
+
+GameSwitcher / recents work
+- [DONE] Build an ONYX-styled recent-games/game-switcher page instead of launching stock gameSwitcher.
+- [DONE] Read Onion recent list data safely from Roms\recentlist.json and recentlist-hidden.json.
+- [DONE] Launch recent games from ONYX recents using the same corrected runtime handoff.
+- [DONE] MENU opens ONYX recents view (VIEW_RECENTS).
+- [DONE] Stock gameSwitcher kept as fallback only, no longer default path.
+
+Game list/options work
+- Decide whether ONYX needs its own per-game options page.
+- Possible per-game options:
+  - Launch
+  - Favorite / Unfavorite
+  - Launch with alternate core
+  - Reset game config
+  - Show game info
+- Avoid dropping into Onion's stock game_list_options UI unless intentionally chosen.
+- Respect per-game core config in Roms\<system>\.game_config.
+
+Visual/design polish
+- Keep design aligned with the mockups in Mock Ups.
+- Use the regular outline-style icons from the mockup direction, not the earlier bulky uploaded icons.
+- Confirm settings icon reads as a gear, not a sun.
+- Confirm games icon reads clearly at 38px.
+- Keep font direction around Saira Semi Condensed unless changed later.
+- Tune row height, title size, subtitle size, and footer size based on device screenshots.
+- Make sure all text descenders are not clipped.
+- Make sure no page uses the older visual style by accident.
+- Keep colors consistent with current preferred palette:
+  - screenBg: #0e1114 or latest chosen dark background
+  - rowBg: #161c21
+  - activeBg / activeBorder: #1c65db unless changed
+  - textMain: #eef2f6
+  - textDim: #9ca3ad
+  - accent: #dd7600
+
+HTML preview work
+- [DONE] Keep an offline HTML preview matching the current C launcher.
+- [DONE] Add previews for all main pages:
+  - [DONE] Home
+  - [DONE] Recents
+  - [DONE] Favorites
+  - [DONE] Games systems
+  - [DONE] ROM list
+  - [DONE] Apps
+  - [DONE] Settings
+- [DONE] Make preview controls easy to adjust without installing to the Miyoo.
+- [DONE] Keep a copyable ONYX_UI_CONFIG block for future tuning.
+
+Packaging / install work
+- Keep GitHub workflow packaging:
+  - bin\onyxLauncher
+  - script\onyx_launcher.sh
+  - res\onyx\icons
+  - res\bootScreen.png
+  - miyoo\app\SairaSemiCondensed-Medium.ttf
+  - App\OnyxLauncher
+  - preview files
+- [DONE] install.sh added for one-command installation.
+- [DONE] Runtime patching is idempotent (awk checks for existing hook before inserting).
+- [DONE] Runtime hook checks for existing block to avoid duplicates.
+- [DONE] Backup created at runtime.sh.onion.bak before first modification.
+
+Testing checklist for each package
+- Boot device and confirm ONYX opens.
+- Battery percent changes or at least does not stay hard-coded at 83%.
+- Open Favorites, Games, Apps, Settings.
+- Open an NES game and confirm speed/audio are normal.
+- Open a GBA game and confirm speed/audio are normal.
+- Press MENU from ONYX and confirm expected behavior.
+- Press B on home and confirm it does not unexpectedly disable ONYX.
+- Disable ONYX from settings, boot stock Onion, then re-enable via Apps > ONYX Launcher.
+- Confirm splash appears as expected.
+- Confirm stock Onion remains usable if ONYX is disabled.
+
+Nice-to-have later
+- Proper ONYX theme assets for stock Onion areas that cannot be replaced yet.
+- Better title cleanup tooling for ROM libraries.
+- Direct device editing over network/USB if Onion supports a practical workflow.
+- More robust config file so colors/fonts/layout can be changed without recompiling.
+- Optional logging mode for ONYX to debug launch/navigation issues on device.
